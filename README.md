@@ -1,13 +1,11 @@
 # FootballerStats
 
-[English documentation](docs/en.md)
-
 FootballerStats is a MediaWiki gadget for editing footballers' infoboxes and club career statistics on Wikipedia. Separate scripts target Turkish Wikipedia and English Wikipedia, with source-editor and VisualEditor integration. Changes are reviewed and published by the editor through Wikipedia's normal editing workflow.
 
 | Edition | Status | Script |
 | --- | --- | --- |
-| Turkish Wikipedia (trwiki) | Initial release: 1.0.0 | [FootballerStats.tr.js](FootballerStats.tr.js) |
-| English Wikipedia (enwiki) | Initial release: 1.0.0 | [FootballerStats.en.js](FootballerStats.en.js) |
+| Turkish Wikipedia (trwiki) | Initial release: 1.0.0 | [src/FootballerStats.tr.js](src/FootballerStats.tr.js) |
+| English Wikipedia (enwiki) | Initial release: 1.0.0 | [src/FootballerStats.en.js](src/FootballerStats.en.js) |
 
 ## Features
 
@@ -17,9 +15,36 @@ FootballerStats is a MediaWiki gadget for editing footballers' infoboxes and clu
 - Resolve club redirects and edit competition notes.
 - Preview source changes or apply them to the current VisualEditor document before publication.
 
+## Test directly from GitHub
+
+For personal testing on Turkish Wikipedia, load the current `main` branch from your `common.js` after the required ResourceLoader modules are ready:
+
+```js
+mw.loader.using( [
+	'mediawiki.util',
+	'mediawiki.api',
+	'mediawiki.storage',
+	'jquery.textSelection',
+	'jquery.ui',
+	'oojs-ui-core',
+	'oojs-ui-windows',
+	'oojs-ui.styles.icons-interactions'
+] ).then( function () {
+	mw.loader.load( 'https://raw.githubusercontent.com/nanahuatl/FootballerStats/main/src/FootballerStats.tr.js' );
+	mw.loader.load(
+		'https://raw.githubusercontent.com/nanahuatl/FootballerStats/main/src/FootballerStats.css',
+		'text/css'
+	);
+} );
+```
+
+This is intended for development/testing. A production gadget should be installed on-wiki through MediaWiki's gadget system rather than loading mutable code directly from GitHub.
+
 ## Installation
 
-Use the [Turkish installation instructions](docs/tr.md#kurulum) or [English installation instructions](docs/en.md#installation). The gadget definition loads both JavaScript and the [CSS stylesheet](FootballerStats.css). Uploading a release to GitHub does not update copies installed on Wikipedia.
+The Turkish implementation is [src/FootballerStats.tr.js](src/FootballerStats.tr.js) with [src/FootballerStats.css](src/FootballerStats.css). The English implementation is [src/FootballerStats.en.js](src/FootballerStats.en.js) with [src/FootballerStats.en.css](src/FootballerStats.en.css).
+
+The sample gadget definition in [gadget.txt](gadget.txt) lists the required ResourceLoader dependencies. Uploading a release to GitHub does not update copies installed on Wikipedia.
 
 ## Development
 
@@ -30,37 +55,27 @@ npm ci
 npm run check
 ```
 
-| Command | Purpose |
-| --- | --- |
-| `npm test` | Run all current regression tests |
-| `npm run test:guides` | Run help-dialog tests |
-| `npm run test:visual-editor` | Run VisualEditor tests |
-| `npm run lint` | Check JavaScript with ESLint and CSS with Stylelint |
-| `npm run lint:js` | Check JavaScript only |
-| `npm run lint:css` | Check CSS only |
-| `npm run check` | Check syntax, lint and run all tests |
+See [package.json](package.json) for the currently available development, lint and test commands.
 
-Tests use local fixtures and simulated MediaWiki/browser APIs. They do not replace testing the interface, generated wikitext and VisualEditor conversion on Wikipedia.
+Local automated checks do not replace testing the interface, generated wikitext and VisualEditor conversion on Wikipedia.
 
 ## Repository layout
 
-- `FootballerStats.tr.js`: Turkish Wikipedia implementation.
-- `FootballerStats.en.js`: English Wikipedia infobox and career table implementation.
-- `FootballerStats.css`: Turkish Wikipedia interface stylesheet.`n- `FootballerStats.en.css`: English Wikipedia interface stylesheet.
-- `docs/tr.md`: Turkish installation and usage.
-- `docs/en.md`: English installation, usage and validation scope.
-- `tests/`: regression tests and local fixtures.
-- `CONTRIBUTING.md`: development, testing and release procedure.
-- `.editorconfig`: shared editor settings, preserving fixture whitespace.
-- `.stylelintrc.json`: CSS lint settings based on Wikimedia conventions.
+- `src/FootballerStats.tr.js`: Turkish Wikipedia implementation.
+- `src/FootballerStats.en.js`: English Wikipedia implementation.
+- `src/FootballerStats.css`: Turkish Wikipedia interface stylesheet.
+- `src/FootballerStats.en.css`: English Wikipedia interface stylesheet.
+- `gadget.txt`: sample ResourceLoader gadget definition.
+- `package.json` and `package-lock.json`: Node.js development tooling and dependencies.
+- `.editorconfig`, `.eslintrc.json` and `.stylelintrc.json`: editor and lint configuration.
 - `SECURITY.md`: security reporting instructions.
-- `gadget.txt` and `docs/gadget.md`: optional trwiki gadget installation reference.
+- `LICENSE`: project license.
 
-Source files currently live at the repository root. 
+Source files live in the `src/` directory.
 
 ## Feedback and license
 
-Report issues at [GitHub Issues](https://github.com/nanahuatl/Wikipedia-FootballerStats-tool/issues), including the wiki, article, editor, browser, reproduction steps and expected result.
+Report issues at [GitHub Issues](https://github.com/nanahuatl/FootballerStats/issues), including the wiki, article, editor, browser, reproduction steps and expected result.
 
 For security-sensitive reports, follow [SECURITY.md](SECURITY.md).
 
