@@ -1,0 +1,29 @@
+{
+	"root": true,
+	"extends": [
+		"wikimedia/client",
+		"wikimedia/mediawiki"
+	],
+	"parserOptions": {
+		"ecmaVersion": 2020
+	},
+	"env": {
+		"browser": true,
+		"jquery": true,
+		"es2020": true
+	},
+	"rules": {
+		"es-x/no-nullish-coalescing-operators": "off",
+		"max-len": [
+			"error",
+			{
+				"code": 125,
+				"tabWidth": 4,
+				"ignoreUrls": true,
+				"ignoreStrings": true,
+				"ignoreTemplateLiterals": true,
+				"ignoreRegExpLiterals": true
+			}
+		]
+	}
+}

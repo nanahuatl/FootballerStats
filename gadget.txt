@@ -1,0 +1,1 @@
+* FootballerStats[dependencies=mediawiki.util,mediawiki.api,mediawiki.storage,jquery.textSelection,jquery.ui,oojs-ui-core,oojs-ui-windows,oojs-ui.styles.icons-interactions]|FootballerStats.js|FootballerStats.css

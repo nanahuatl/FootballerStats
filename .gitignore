@@ -1,0 +1,16 @@
+node_modules/
+
+# Local editor, operating system and temporary files
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+*.bak
+*.swp
+coverage/
+
+# Local secrets; examples may be committed deliberately.
+.env
+.env.*
+!.env.example
+credentials.json

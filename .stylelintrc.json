@@ -1,0 +1,22 @@
+{
+	"extends": "stylelint-config-wikimedia",
+	"rules": {
+		"@stylistic/indentation": 2,
+		"selector-max-id": null,
+		"declaration-no-important": null,
+		"declaration-property-unit-disallowed-list": null,
+		"declaration-property-value-disallowed-list": null,
+		"time-min-milliseconds": null,
+		"declaration-block-no-redundant-longhand-properties": [
+			true,
+			{
+				"ignoreShorthands": [
+					"overflow"
+				]
+			}
+		]
+	},
+	"ignoreFiles": [
+		"node_modules/**"
+	]
+}

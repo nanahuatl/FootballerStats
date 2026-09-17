@@ -1,0 +1,33 @@
+{
+	"title": "FootballerStats",
+	"name": "footballerstats",
+	"version": "1.0.0",
+	"description": "A MediaWiki gadget for editing footballer infoboxes and club career statistics on Wikipedia.",
+	"private": true,
+	"license": "CC-BY-SA-3.0",
+	"scripts": {
+		"test": "node --test tests/*.test.cjs",
+		"test:guides": "node --test tests/column-guides.test.cjs",
+		"test:visual-editor": "node --test tests/visual-editor.test.cjs",
+		"lint": "npm run lint:js && npm run lint:css",
+		"lint:fix": "npm run lint:js -- --fix && npm run lint:css -- --fix",
+		"check": "node --check FootballerStats.tr.js && node --check FootballerStats.en.js && npm run lint && npm test",
+		"lint:js": "eslint FootballerStats.tr.js FootballerStats.en.js",
+		"lint:css": "stylelint FootballerStats.css FootballerStats.en.css"
+	},
+	"devDependencies": {
+		"eslint-config-wikimedia": "^0.32.5",
+		"stylelint": "17.6.0",
+		"stylelint-config-wikimedia": "0.19.4"
+	},
+	"engines": {
+		"node": ">=22"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/nanahuatl/Wikipedia-FootballerStats-tool.git"
+	},
+	"bugs": {
+		"url": "https://github.com/nanahuatl/Wikipedia-FootballerStats-tool/issues"
+	}
+}
