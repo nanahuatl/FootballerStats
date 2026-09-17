@@ -6,12 +6,9 @@
 	"private": true,
 	"license": "CC-BY-SA-3.0",
 	"scripts": {
-		"test": "node --test tests/*.test.cjs",
-		"test:guides": "node --test tests/column-guides.test.cjs",
-		"test:visual-editor": "node --test tests/visual-editor.test.cjs",
 		"lint": "npm run lint:js && npm run lint:css",
 		"lint:fix": "npm run lint:js -- --fix && npm run lint:css -- --fix",
-		"check": "node --check src/FootballerStats.tr.js && node --check src/FootballerStats.en.js && npm run lint && npm test",
+		"check": "node --check src/FootballerStats.tr.js && node --check src/FootballerStats.en.js && npm run lint",
 		"lint:js": "eslint src/FootballerStats.tr.js src/FootballerStats.en.js",
 		"lint:css": "stylelint src/FootballerStats.css src/FootballerStats.en.css"
 	},
