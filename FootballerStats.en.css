@@ -1,0 +1,929 @@
+/* FootballerStats styles | CC BY-SA 3.0 */
+#ca-footballerstats-editor a,
+#ca-footballerstats-editor-view a {
+  text-transform: none !important;
+  font-variant: normal !important;
+}
+.tfsh-launch {
+  padding: 7px 12px;
+  border: 1px solid #a2a9b1;
+  background: #f8f9fa;
+  color: #202122;
+  cursor: pointer;
+  border-radius: 2px;
+  font: 600 13px/1.4 sans-serif;
+}
+.tfsh-launch-row {
+  margin: 0 0 12px;
+  display: block;
+}
+.tfsh-view-launch {
+  display: inline-block;
+  margin: 6px 0;
+}
+.tfsh-visual-launch {
+  position: fixed;
+  top: 64px;
+  right: 20px;
+  z-index: 100;
+}
+.tfsh-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--background-color-backdrop-light, rgba(255, 255, 255, 0.65));
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  padding: 16px;
+}
+.tfsh-backdrop.is-open {
+  display: flex;
+}
+.tfsh-modal {
+  width: 94vw;
+  max-width: 100%;
+  min-width: 0;
+  max-height: 82vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
+  background: var(--background-color-base, #fff);
+  border: 1px solid var(--border-color-base, #a2a9b1);
+  border-radius: 2px;
+  box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.2);
+  --tfsh-modal-padding: 12px;
+  padding: var(--tfsh-modal-padding);
+  font: 11.7px/1.5 sans-serif;
+  color: #202122;
+}
+.tfsh-table,
+.tfsh-note-table {
+  /* Competition widths are independent of the fixed match/goal controls. */
+  --tfsh-stat-width: 24px;
+  --tfsh-stat-column-width: 45px;
+  --tfsh-league-width: 13%;
+  --tfsh-local-league-width: 13%;
+  --tfsh-national-cup-width: 7.4%;
+  --tfsh-league-cup-width: 7%;
+  --tfsh-continental-width: 6%;
+  --tfsh-other-width: 5%;
+
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+  background: var(--background-color-base, #fff);
+  color: #202122;
+  font: 11.7px/1.5 sans-serif;
+}
+.tfsh-table-wrap {
+  position: relative;
+  padding-top: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 1400px) and (min-width: 721px) {
+  .tfsh-backdrop {
+    padding: 8px;
+  }
+  .tfsh-modal {
+    width: calc(100vw - 16px);
+    --tfsh-modal-padding: 10px;
+  }
+}
+
+@media (max-width: 720px) {
+  .tfsh-backdrop {
+    align-items: stretch;
+    padding: 0;
+  }
+  .tfsh-modal {
+    width: 100vw;
+    max-height: 100dvh;
+    min-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+  .tfsh-table {
+    min-width: 1100px;
+  }
+  .tfsh-table-wrap {
+    overflow-x: auto;
+  }
+}
+.tfsh-column-disabled,
+.tfsh-infobox-only-disabled {
+  background: #f8f9fa !important;
+  color: #72777d !important;
+  opacity: 0.62;
+}
+.tfsh-table th,
+.tfsh-table td,
+.tfsh-note-table th,
+.tfsh-note-table td {
+  border: 1px solid #a2a9b1;
+  padding: 3px;
+  text-align: left;
+  vertical-align: top;
+}
+.tfsh-table th,
+.tfsh-note-table th {
+  background: #eaecf0;
+  position: static;
+  text-align: center;
+  vertical-align: middle;
+  font-weight: 700;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+.tfsh-note-table th,
+.tfsh-note-table td {
+  border: 0;
+}
+.tfsh-note-table th {
+  background: transparent;
+}
+.tfsh-table th.tfsh-national-cup-heading {
+  white-space: nowrap;
+  min-width: 125px;
+}
+.tfsh-table th.tfsh-infobox-year-heading {
+  white-space: nowrap;
+  line-height: 1.2;
+}
+.tfsh-table th.tfsh-infobox-only-heading {
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+  line-height: 1.2;
+}
+.tfsh-table thead {
+  position: sticky;
+  top: -12px;
+  z-index: 3;
+  background: #eaecf0;
+}
+.tfsh-note-dialog.ui-dialog input.tfsh-note-dialog-input,
+.tfsh-note-dialog.ui-dialog input.tfsh-stat,
+.tfsh-table input {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 28px;
+  padding: 2px 5px;
+  border: 1px solid #a2a9b1;
+  border-radius: 2px;
+  background: #fff;
+  color: #202122;
+  font-family: inherit;
+  font-size: 11.7px;
+  line-height: 1.4;
+  margin: 0;
+}
+.tfsh-note-dialog.ui-dialog input.tfsh-note-dialog-input,
+.tfsh-note-dialog.ui-dialog input.tfsh-stat,
+.tfsh-table input:not([type="checkbox"]) {
+  min-height: 25px;
+  padding-top: 1px;
+  padding-bottom: 1px;
+}
+.tfsh-note-dialog.ui-dialog input.tfsh-note-dialog-input::placeholder,
+.tfsh-table input::placeholder {
+  color: #72777d;
+  opacity: 1;
+}
+.tfsh-table input.tfsh-invalid {
+  border-color: #b32424;
+  background: #fee7e6;
+  box-shadow: inset 0 0 0 1px #b32424;
+}
+.tfsh-table .tfsh-text {
+  min-width: 0;
+}
+.tfsh-table .tfsh-team {
+  min-width: 0;
+}
+.tfsh-table .tfsh-season {
+  min-width: 0;
+}
+.tfsh-table .tfsh-stat,
+.tfsh-note-dialog.ui-dialog input.tfsh-stat {
+  width: var(--tfsh-stat-width);
+  min-width: 0;
+  text-align: center;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+.tfsh-table .tfsh-missing-goal {
+  background-color: #fdd;
+  color: #900;
+}
+.tfsh-infobox-only-cell {
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+.tfsh-table input.tfsh-infobox-only {
+  width: 14px;
+  min-width: 0;
+  margin: 0;
+}
+.tfsh-link-cell {
+  min-width: 0;
+  vertical-align: top !important;
+}
+.tfsh-link-row {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 2px;
+}
+.tfsh-link-row input[type="text"] {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.tfsh-link-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  justify-content: flex-start;
+  font-size: 9.9px;
+  color: #54595d;
+  line-height: 1.2;
+  margin-top: -1px;
+}
+.tfsh-link-toggle input[type="checkbox"] {
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  min-height: 12px;
+  flex: 0 0 12px;
+  padding: 0;
+  margin: 0;
+}
+.tfsh-team-cell {
+  min-width: 0;
+  vertical-align: top !important;
+}
+.tfsh-team-stack .tfsh-link-toggle,
+.tfsh-link-row .tfsh-link-toggle {
+  margin-top: 3px;
+}
+.tfsh-team-stack .tfsh-link-toggle + .tfsh-link-toggle {
+  margin-top: 3px;
+}
+.tfsh-team-stack .tfsh-add-team {
+  margin-top: 3px;
+}
+.tfsh-team-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  justify-content: flex-start;
+}
+.tfsh-season-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+.tfsh-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.tfsh-update-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: inherit;
+  font-weight: 700;
+}
+.tfsh-update-date {
+  box-sizing: border-box;
+  height: 25px;
+  min-height: 25px;
+  width: 180px;
+  padding: 1px 5px;
+  border: 1px solid #a2a9b1;
+  border-radius: 2px;
+  font: inherit;
+  font-size: 11.7px;
+  line-height: 1.4;
+  font-weight: 400;
+}
+.tfsh-actions button {
+  padding: 7px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11.7px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.tfsh-competition-note-btn {
+  margin: 0;
+  width: 14px;
+  min-width: 14px;
+  height: 14px;
+  min-height: 14px;
+  box-sizing: border-box;
+  padding: 0;
+  font-size: 9.9px;
+  line-height: 12px;
+  border: 1px solid #72777d;
+  border-radius: 999px;
+  background: linear-gradient(to bottom, #fff 0%, #eaecf0 52%, #a2a9b1 100%);
+  color: #202122;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    inset 0 -2px 0 #72777d,
+    0 2px 2px rgba(0, 0, 0, 0.24);
+  cursor: pointer;
+  text-align: center;
+  font-weight: 700;
+  transition: filter 80ms ease, box-shadow 80ms ease, transform 80ms ease;
+}
+.tfsh-competition-note-btn:hover {
+  filter: none;
+  border-color: #36c;
+  background: linear-gradient(to bottom, #6b8de3 0%, #36c 55%, #2a4b9b 100%);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    inset 0 -2px 0 #36c,
+    0 3px 3px rgba(0, 0, 0, 0.25);
+}
+.tfsh-competition-note-btn:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.3);
+}
+.tfsh-note-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100001;
+  display: none;
+  background: rgba(255, 255, 255, 0.5);
+  font-size: 16px;
+}
+.tfsh-note-dialog-backdrop.is-open { display: block; }
+.tfsh-note-dialog .tfsh-note-dialog-content {
+  --tfsh-stat-width: 24px;
+  max-height: calc(100dvh - 170px);
+  overflow: auto;
+}
+.tfsh-column-guide-text > p {
+  margin: 0;
+}
+.tfsh-note-dialog .tfsh-note-dialog-content > p {
+  margin: 0 0 1.5em;
+}
+.tfsh-note-dialog.ui-dialog input.tfsh-note-dialog-input {
+  appearance: none;
+  height: 25px;
+  padding: 1px 2px;
+  border: 1px solid #a2a9b1;
+  border-radius: 2px;
+  box-shadow: none;
+  outline: none;
+  font-weight: 400;
+}
+.tfsh-note-dialog.ui-dialog input.tfsh-note-dialog-input:focus {
+  border-color: #36c;
+  box-shadow: none;
+  outline: none;
+}
+.tfsh-note-dialog .ui-dialog-buttonpane .tfsh-note-save {
+  border-color: #21864b !important;
+  background: #21864b !important;
+  color: #fff;
+  text-shadow: none;
+}
+.tfsh-note-dialog .ui-dialog-buttonpane .tfsh-note-save:hover {
+  border-color: #277b49 !important;
+  background: #277b49 !important;
+}
+.tfsh-note-dialog .ui-dialog-buttonpane .tfsh-note-save:active {
+  border-color: #165c33 !important;
+  background: #165c33 !important;
+}
+.tfsh-note-dialog .ui-dialog-buttonpane .tfsh-note-save:focus-visible {
+  outline: 2px solid #21864b;
+  outline-offset: 2px;
+}
+.tfsh-remove,
+.tfsh-note-dialog .tfsh-remove {
+  padding: 4px 8px;
+  border: 1px solid #a2a9b1;
+  background: #f8f9fa;
+  color: #202122;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.tfsh-remove-cell {
+  border: none !important;
+  background: transparent !important;
+  padding-left: 3px !important;
+  white-space: nowrap;
+}
+.tfsh-remove-cell .tfsh-remove {
+  height: 26px;
+  border-color: #72777d;
+  background: linear-gradient(to bottom, #fff 0%, #eaecf0 50%, #a2a9b1 100%);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    inset 0 -3px 0 #72777d,
+    0 2px 2px rgba(0, 0, 0, 0.22);
+  text-shadow: none;
+  transition: filter 80ms ease, box-shadow 80ms ease, transform 80ms ease;
+}
+.tfsh-remove-cell .tfsh-remove:hover {
+  filter: brightness(1.06);
+  border-color: #36c;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    inset 0 -3px 0 #36c,
+    0 3px 3px rgba(0, 0, 0, 0.24);
+}
+.tfsh-remove-cell .tfsh-remove:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.3);
+}
+.tfsh-table th.tfsh-toggle-heading {
+  cursor: pointer;
+  user-select: none;
+}
+.tfsh-note-dialog.ui-dialog .ui-dialog-titlebar-close,
+.tfsh-head .tfsh-close,
+.tfsh-modal button:not(.tfsh-close),
+.tfsh-note-dialog.ui-dialog .tfsh-note-add,
+.tfsh-note-dialog .tfsh-note-entry button,
+.tfsh-table th.tfsh-toggle-heading {
+  appearance: none;
+  border: 1px solid #a2a9b1;
+  border-radius: 2px;
+  background-color: #f8f9fa;
+  background-image: linear-gradient(to bottom, #fff, #f8f9fa 55%, #eaecf0);
+  color: #202122;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 1px 1px rgba(0, 0, 0, 0.08);
+  filter: none;
+  text-shadow: none;
+  transform: none;
+  transition: background-color 80ms ease, border-color 80ms ease, box-shadow 80ms ease;
+}
+.tfsh-note-dialog.ui-dialog .ui-dialog-titlebar-close,
+.tfsh-head .tfsh-close {
+  box-sizing: border-box;
+  width: 32px;
+  height: 26px;
+  min-width: 32px;
+  min-height: 26px;
+  margin: 0;
+  padding: 4px 8px;
+  font: 600 11px/1.4 sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.tfsh-note-dialog.ui-dialog .ui-dialog-titlebar-close {
+  top: 50%;
+  transform: translateY(-50%);
+}
+.tfsh-note-dialog.ui-dialog .ui-dialog-titlebar-close:hover,
+.tfsh-head .tfsh-close:hover,
+.tfsh-modal button:not(.tfsh-close):hover,
+.tfsh-note-dialog.ui-dialog .tfsh-note-add:hover,
+.tfsh-note-dialog .tfsh-note-entry button:hover,
+.tfsh-table th.tfsh-toggle-heading:hover {
+  border-color: #72777d;
+  background-color: #fff;
+  background-image: linear-gradient(to bottom, #fff, #f8f9fa);
+  color: #202122;
+  box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgba(0, 0, 0, 0.14);
+  filter: none;
+  transform: none;
+}
+.tfsh-note-dialog.ui-dialog .ui-dialog-titlebar-close:active,
+.tfsh-head .tfsh-close:active,
+.tfsh-modal button:not(.tfsh-close):active,
+.tfsh-note-dialog.ui-dialog .tfsh-note-add:active,
+.tfsh-note-dialog .tfsh-note-entry button:active,
+.tfsh-table th.tfsh-toggle-heading:active {
+  border-color: #72777d;
+  background-color: #c8ccd1;
+  background-image: none;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.22);
+  transform: none;
+}
+
+
+.tfsh-note-dialog.ui-dialog .ui-dialog-titlebar-close:focus-visible,
+.tfsh-head .tfsh-close:focus-visible,
+.tfsh-modal button:not(.tfsh-close):focus-visible,
+.tfsh-note-dialog.ui-dialog .tfsh-note-add:focus-visible,
+.tfsh-note-dialog .tfsh-note-entry button:focus-visible,
+.tfsh-table th.tfsh-toggle-heading:focus-visible {
+  outline: 2px solid #36c;
+  outline-offset: 1px;
+}
+.tfsh-table th.tfsh-toggle-heading:has(.tfsh-column-guide-btn:active) {
+  border-color: #a2a9b1;
+  background-color: #f8f9fa;
+  background-image: linear-gradient(to bottom, #fff, #f8f9fa 55%, #eaecf0);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 1px 1px rgba(0, 0, 0, 0.08);
+}
+.tfsh-table th.tfsh-toggle-heading[aria-pressed="false"],
+.tfsh-table th.tfsh-toggle-heading.tfsh-column-disabled,
+.tfsh-infobox-only-disabled {
+  background-color: #eaecf0 !important;
+  background-image: linear-gradient(to bottom, #f8f9fa, #eaecf0) !important;
+  color: #54595d !important;
+  box-shadow: inset 0 1px 0 #fff !important;
+  opacity: 0.72;
+}
+.tfsh-inline-link,
+.tfsh-note-dialog .tfsh-inline-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  width: 24px;
+  height: 22px;
+  padding: 0;
+  cursor: pointer;
+  text-align: center;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+.tfsh-inline-link:hover {
+  text-decoration: none;
+}
+.tfsh-modal .tfsh-actions button.tfsh-primary {
+  box-sizing: border-box;
+  height: 25px;
+  min-height: 25px;
+  padding: 1px 12px;
+  border-color: #21864b;
+  background-color: #21864b;
+  background-image: none;
+  color: #fff;
+  box-shadow: none;
+  font-size: 11.7px;
+  font-weight: 700;
+  text-shadow: none;
+}
+.tfsh-modal .tfsh-actions button.tfsh-primary:hover {
+  border-color: #277b49;
+  background-color: #277b49;
+  background-image: none;
+  color: #fff;
+  box-shadow: none;
+}
+.tfsh-modal .tfsh-actions button.tfsh-primary:active {
+  border-color: #165c33;
+  background-color: #165c33;
+  background-image: none;
+  color: #fff;
+  box-shadow: none;
+}
+.tfsh-modal .tfsh-actions button.tfsh-primary:focus-visible {
+  border-color: #21864b;
+  outline: 1px solid transparent;
+  outline-offset: 0;
+  box-shadow: inset 0 0 0 1px #21864b, inset 0 0 0 2px #fff;
+}
+
+.tfsh-match-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.tfsh-modal button.tfsh-competition-note-btn.has-note {
+  border-color: #21864b;
+  background: #21864b;
+  color: #fff;
+}
+.tfsh-modal .tfsh-competition-note-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+.tfsh-table input.tfsh-season,
+.tfsh-table .tfsh-infobox-year-column input {
+  text-align: center;
+}
+
+.tfsh-update-date.tfsh-date-automatic {
+  border-color: #b32424;
+  background: #fee7e6;
+}
+.tfsh-update-date:disabled {
+  background: #eaecf0;
+  color: #72777d;
+}
+.tfsh-today-toggle {
+  font-weight: 400;
+}
+.tfsh-table .tfsh-today-toggle input {
+  height: 14px;
+}
+
+.tfsh-table .tfsh-link-row input[type="text"]:disabled {
+  background: #f8f9fa;
+  color: #72777d;
+  opacity: 0.62;
+}
+
+.tfsh-table .tfsh-column-guide-btn {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  display: block;
+  margin: 0;
+  transform: translateY(-50%);
+}
+.tfsh-table thead tr:first-child th {
+  position: relative;
+}
+.tfsh-table .tfsh-column-guide-btn:hover,
+.tfsh-table .tfsh-column-guide-btn:active {
+  transform: translateY(-50%);
+}
+.tfsh-table th.tfsh-guide-heading {
+  min-width: 108px;
+  padding-right: 32px;
+}
+
+.tfsh-table th.tfsh-main-league-heading .tfsh-column-guide-btn,
+.tfsh-table th.tfsh-local-league-heading .tfsh-column-guide-btn,
+.tfsh-table th.tfsh-national-cup-heading .tfsh-column-guide-btn,
+.tfsh-table th.tfsh-league-cup-heading .tfsh-column-guide-btn,
+.tfsh-table th.tfsh-continental-heading .tfsh-column-guide-btn,
+.tfsh-table th.tfsh-other-heading .tfsh-column-guide-btn {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+.tfsh-table th.tfsh-guide-heading:not([rowspan="2"]) .tfsh-column-guide-btn {
+  top: 50%;
+  bottom: auto;
+  vertical-align: middle;
+}
+.tfsh-table thead tr:first-child th[rowspan="2"] .tfsh-column-guide-btn {
+  top: 5px;
+  right: 2px;
+  transform: none;
+}
+.tfsh-table thead tr:first-child th[rowspan="2"] .tfsh-column-guide-btn:hover,
+.tfsh-table thead tr:first-child th[rowspan="2"] .tfsh-column-guide-btn:active {
+  transform: none;
+}
+.tfsh-table thead tr:first-child th:not([rowspan="2"]) {
+  padding-right: 19px;
+  text-align: center;
+}
+.tfsh-table th.tfsh-league-cup-heading {
+  white-space: nowrap;
+  min-width: 130px;
+}
+
+/* Fit columns and controls to the available desktop viewport width. */
+@media (min-width: 721px) {
+  .tfsh-table th.tfsh-guide-heading {
+    min-width: 0;
+    padding-right: 19px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .tfsh-table .tfsh-remove {
+    padding-left: 3px;
+    padding-right: 3px;
+  }
+  .tfsh-table .tfsh-link-toggle {
+    flex-wrap: wrap;
+  }
+}
+
+/* OOjs UI Team and contributors, MIT; icon hosted on Wikimedia Commons. */
+.tfsh-note-dialog .tfsh-note-dialog-content > .tfsh-column-guide-description {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 64px;
+  margin: 0;
+  padding: 8px 0;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.tfsh-column-guide-description::before {
+  content: "";
+  display: block;
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  background: url("https://upload.wikimedia.org/wikipedia/commons/6/63/OOjs_UI_icon_info_big.svg") center / contain no-repeat;
+}
+
+.tfsh-column-guide-text {
+  flex: 1;
+  min-width: 0;
+}
+.tfsh-column-guide-text > ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+  list-style: disc outside;
+}
+.tfsh-column-guide-text > ul > li {
+  display: list-item;
+  margin: 0 0 6px;
+}
+.tfsh-column-guide-text > ul > li:last-child {
+  margin-bottom: 0;
+}
+
+.tfsh-modal .tfsh-table .tfsh-remove,
+.tfsh-note-dialog.ui-dialog .tfsh-remove {
+  box-sizing: border-box;
+  width: 32px;
+  max-width: 100%;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+/* Use Adiutor's native OOUI ProcessDialog header and action styling. */
+.tfsh-head {
+  margin: calc(-1 * var(--tfsh-modal-padding)) calc(-1 * var(--tfsh-modal-padding)) 12px;
+  background: var(--background-color-base, #fff);
+  font: 14px/1.42857143 sans-serif;
+}
+.tfsh-head > .oo-ui-window-head {
+  background: var(--background-color-base, #fff);
+  box-shadow: inset 0 -3px 4px -3px rgba(0, 0, 0, 0.35);
+  border-bottom: 1px solid var(--border-color-subtle, #c8ccd1);
+  outline: 0;
+  position: relative;
+}
+.tfsh-head .oo-ui-processDialog-navigation {
+  height: 42px;
+  min-height: 42px;
+}
+.tfsh-head .oo-ui-processDialog-location {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 44px;
+}
+
+.tfsh-head .oo-ui-processDialog-actions-safe {
+  left: auto;
+  right: 0;
+}
+
+.tfsh-head .oo-ui-processDialog-title {
+  display: block;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  line-height: 1.4;
+}
+
+.tfsh-brand-mark { width: 28px; height: 28px; margin-right: 9px; object-fit: contain; vertical-align: middle; }
+.tfsh-brand-wordmark { font-size: 18px; font-weight: 400; letter-spacing: -0.3px; vertical-align: middle; }
+.tfsh-brand-wordmark strong { color: #21864b; font-weight: 750; }
+
+/* Keep N and ? dialogs visually identical to the main OOUI header. */
+.tfsh-note-dialog.ui-dialog {
+  font-size: 11px;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
+  padding: 0;
+  border: 1px solid var(--border-color-base, #a2a9b1);
+  border-radius: 2px;
+  background: var(--background-color-base, #fff);
+  box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+}
+.tfsh-note-dialog.ui-dialog .ui-dialog-titlebar {
+  position: relative;
+  box-sizing: border-box;
+  height: 42px;
+  min-height: 42px;
+  padding: 0 44px;
+  border: 0;
+  border-bottom: 1px solid var(--border-color-subtle, #c8ccd1);
+  border-radius: 0;
+  background: var(--background-color-base, #fff);
+  box-shadow: inset 0 -3px 4px -3px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+.tfsh-note-dialog.ui-dialog .ui-dialog-title {
+  float: none;
+  width: auto;
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-emphasized, #000);
+  font: 700 15.4px/42px sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+
+.tfsh-note-dialog.ui-dialog .ui-dialog-titlebar-close::before {
+  content: "";
+  display: block;
+  width: 20px;
+  height: 20px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  background: url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2220%22 height=%2220%22 viewBox=%220 0 20 20%22%3E%3Cpath d=%22M16.707 4.707 11.414 10l5.293 5.293-1.414 1.414L10 11.414l-5.293 5.293-1.414-1.414L8.586 10 3.293 4.707l1.414-1.414L10 8.586l5.293-5.293z%22/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.tfsh-note-dialog.ui-dialog .ui-dialog-content {
+  background: var(--background-color-base, #fff);
+}
+
+.tfsh-note-dialog.ui-dialog .ui-dialog-titlebar-close .ui-icon,
+.tfsh-note-dialog.ui-dialog .ui-dialog-titlebar-close::after {
+  display: none !important;
+}
+
+/* Shared close-button sizing and guide-dialog title branding. */
+
+.tfsh-note-dialog.ui-dialog .ui-dialog-title::before {
+  content: "";
+  display: block;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  background: url("https://upload.wikimedia.org/wikipedia/commons/8/8c/Soccer_Field_-_The_Noun_Project.svg") center / contain no-repeat;
+}
+
+.tfsh-note-dialog.ui-dialog .ui-dialog-titlebar-close:hover,
+.tfsh-note-dialog.ui-dialog .ui-dialog-titlebar-close:active {
+  transform: translateY(-50%);
+}
+.tfsh-head .tfsh-close .oo-ui-iconElement-icon {
+  position: static;
+  margin: 0;
+}
+/* Keep the numeric controls and their labels equal within each competition. */
+.tfsh-table .tfsh-stat-cell,
+.tfsh-table th.tfsh-stat-heading,
+.tfsh-note-table .tfsh-stat-cell,
+.tfsh-note-table th.tfsh-stat-heading {
+  text-align: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+.tfsh-stat-heading > span {
+  display: inline-block;
+  width: calc(var(--tfsh-stat-column-width) - 4px);
+  white-space: nowrap;
+}
+
+/* Competition-note rows reuse the main numeric controls and action buttons. */
+.tfsh-note-table {
+  margin-bottom: 6px;
+}
+.tfsh-note-table .tfsh-note-stat-column {
+  width: var(--tfsh-stat-column-width);
+}
+.tfsh-note-table .tfsh-note-remove-column {
+  width: 40px;
+}
+.tfsh-note-dialog.ui-dialog .tfsh-note-entry input.tfsh-note-dialog-input {
+  width: 100%;
+  margin: 0;
+}
+.tfsh-note-dialog.ui-dialog .tfsh-note-entry input:disabled {
+  background: #eaecf0;
+  color: #72777d;
+}
+.tfsh-note-dialog .tfsh-note-dialog-content > .tfsh-note-preview {
+  margin-top: 16px;
+  overflow-wrap: anywhere;
+}
