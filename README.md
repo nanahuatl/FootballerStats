@@ -55,9 +55,9 @@ npm ci
 npm run check
 ```
 
-See [package.json](package.json) for the currently available development, lint and test commands.
+`npm run check` performs JavaScript syntax checks, ESLint checks and Stylelint checks. See [package.json](package.json) for the available development commands.
 
-Local automated checks do not replace testing the interface, generated wikitext and VisualEditor conversion on Wikipedia.
+These static checks do not replace testing the interface, generated wikitext and VisualEditor conversion on Wikipedia.
 
 ## Repository layout
 
