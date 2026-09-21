@@ -543,7 +543,7 @@
 	function formatNamedLeagueCell( row, key ) {
 		const leagueName = normalizeSeasonText( row[ key ] );
 		if ( !leagueName ) {
-			return '-';
+			return '—';
 		}
 		const yearNamedLeague = leagueName.match( /^(\d{4}(?:\u2013\d{2,4})?)\s+(.+)$/ );
 		const linkTarget = yearNamedLeague ?
@@ -616,7 +616,7 @@
 			goalsValue = '?';
 		}
 		if ( isBlank( appsValue ) && isBlank( goalsValue ) ) {
-			return { merged: true, text: '-' };
+			return { merged: true, text: '—' };
 		}
 		return {
 			merged: false,
@@ -806,7 +806,7 @@
 			];
 			if ( localLeagueEnabled ) {
 				totalCells.push(
-					'-',
+					'—',
 					groupLocalLeagueApps.unknown ? '?' : String( groupLocalLeagueApps.total ),
 					groupLocalLeagueGoals.unknown ? '?' : String( groupLocalLeagueGoals.total )
 				);
@@ -968,7 +968,7 @@
 			];
 			if ( localLeagueEnabled ) {
 				grandCells.push(
-					'-',
+					'—',
 					grandLocalLeagueApps.unknown ? '?' : String( grandLocalLeagueApps.total ),
 					grandLocalLeagueGoals.unknown ? '?' : String( grandLocalLeagueGoals.total )
 				);
@@ -1362,7 +1362,7 @@
 			const rawLeagueCell = cleanValue( cells[ cursor ] || '' );
 			const spansStatistics = /^colspan\s*=\s*["']?3["']?\s*\|/i.test( rawLeagueCell );
 			const leagueCell = extractCellContent( rawLeagueCell );
-			if ( leagueCell && leagueCell !== '-' ) {
+			if ( leagueCell && !/^[-–—−]$/.test( leagueCell ) ) {
 				const parsedLeague = parseWikiLinkValue( leagueCell );
 				const seasonPrefix = `${ cleanValue( season ) } `;
 				if ( season && parsedLeague.target.startsWith( seasonPrefix ) ) {
@@ -1387,7 +1387,7 @@
 			if ( parsed.note ) {
 				values.competitionNotes[ appsKey ] = parsed.note;
 			}
-			if ( !current || /^colspan\s*=\s*"2"/i.test( current ) || current === '-' ) {
+			if ( !current || /^colspan\s*=\s*"2"/i.test( current ) || /^[-–—−]$/.test( current ) ) {
 				cursor += 1;
 				return;
 			}
