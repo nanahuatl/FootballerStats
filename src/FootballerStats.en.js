@@ -542,7 +542,7 @@
 
 	function formatNamedLeagueCell( row, key ) {
 		const leagueName = normalizeSeasonText( row[ key ] );
-		if ( !leagueName ) {
+		if ( !leagueName || /^[-–—−]$/.test( leagueName ) ) {
 			return '—';
 		}
 		const yearNamedLeague = leagueName.match( /^(\d{4}(?:\u2013\d{2,4})?)\s+(.+)$/ );
@@ -620,8 +620,8 @@
 		}
 		return {
 			merged: false,
-			apps: escapeCell( cleanValue( appsValue ) ),
-			goals: escapeCell( cleanValue( goalsValue ) ),
+			apps: escapeCell( cleanValue( appsValue ).replace( /^[-–—−]$/, '—' ) ),
+			goals: escapeCell( cleanValue( goalsValue ).replace( /^[-–—−]$/, '—' ) ),
 			missingGoals: Boolean( cleanValue( appsValue ) &&
 				!isUnknown( appsValue ) && isBlank( goalsValue ) )
 		};
@@ -745,7 +745,7 @@
 			cells.push( formatSeasonCell( row ) );
 			const leaguePair = pairDisplay( row.leagueApps, row.leagueGoals );
 			if ( !cleanValue( row.leagueName ) && leaguePair.merged ) {
-				cells.push( 'colspan="3" | -' );
+				cells.push( 'colspan="3" | —' );
 			} else {
 				cells.push( formatLeagueCell( row ) );
 				cells.push( ...( leaguePair.merged ?
@@ -757,7 +757,7 @@
 			if ( localLeagueEnabled ) {
 				const localLeaguePair = pairDisplay( row.localLeagueApps, row.localLeagueGoals );
 				if ( !cleanValue( row.localLeagueName ) && localLeaguePair.merged ) {
-					cells.push( 'colspan="3" | -' );
+					cells.push( 'colspan="3" | —' );
 				} else {
 					cells.push( formatLocalLeagueCell( row ) );
 					cells.push( ...( localLeaguePair.merged ?
