@@ -446,7 +446,8 @@
 	}
 
 	function escapeCell( value ) {
-		return cleanValue( value ).replace( /\|/g, '{{!}}' );
+		return cleanValue( value ).split( /(<ref\b[^>]*\/\s*>|<ref\b[^>]*>[\s\S]*?<\/ref\s*>)/gi )
+			.map( ( part, index ) => index % 2 ? part : part.replace( /\|/g, '{{!}}' ) ).join( '' );
 	}
 
 	function normalizeBoolean( value ) {
@@ -1528,6 +1529,65 @@
 			/goals/.test( headerText );
 	}
 
+	function careerTableRows( section ) {
+		const protectedValues = [];
+		const protect = ( value ) => {
+			protectedValues.push( value );
+			return '\uE000' + ( protectedValues.length - 1 ) + '\uE001';
+		};
+		let masked = section.replace( /<ref\b[^>]*\/\s*>|<ref\b[^>]*>[\s\S]*?<\/ref\s*>|<!--[\s\S]*?-->|<nowik[i]\b[^>]*>[\s\S]*?<\/nowik[i]\s*>/gi, protect );
+		let depth = 0;
+		let start = 0;
+		let result = '';
+		let last = 0;
+		for ( let i = 0; i < masked.length - 1; i += 1 ) {
+			const pair = masked.slice( i, i + 2 );
+			if ( pair === '{{' ) {
+				if ( depth === 0 ) {
+					start = i;
+				}
+				depth += 1;
+				i += 1;
+			} else if ( pair === '}}' && depth ) {
+				depth -= 1;
+				i += 1;
+				if ( depth === 0 ) {
+					result += masked.slice( last, start ) + protect( masked.slice( start, i + 1 ) );
+					last = i + 1;
+				}
+			}
+		}
+		masked = result + masked.slice( last );
+		const restore = ( value ) => value.replace( /\uE000(\d+)\uE001/g,
+			( match, index ) => restore( protectedValues[ Number( index ) ] ) );
+		const rows = [];
+		let current = '';
+		const flush = () => {
+			if ( current ) {
+				rows.push( current );
+			}
+			current = '';
+		};
+		masked.split( /\r?\n/ ).forEach( ( line ) => {
+			const trimmed = line.trim();
+			if ( /^\|[-}]/.test( trimmed ) ) {
+				flush();
+			} else if ( /^[!|]/.test( trimmed ) && !trimmed.startsWith( '|+' ) ) {
+				if ( current && current[ 0 ] !== trimmed[ 0 ] ) {
+					flush();
+				}
+				current += current ? trimmed[ 0 ] + trimmed : trimmed;
+			} else if ( current ) {
+				current += '\n' + line;
+			}
+		} );
+		flush();
+		return rows.map( ( row ) => ( {
+			header: row.startsWith( '!' ),
+			cells: row.slice( 1 ).split( row.startsWith( '!' ) ? /\s*!!\s*/ : /\s*\|\|\s*/ ).map( restore )
+		} ) );
+	}
+
 	function parseRowsFromCareerSection( source ) {
 		const sourceText = source || '';
 		const tableRange = findWikitableRanges( sourceText ).find(
@@ -1541,7 +1601,7 @@
 
 		const otherNoteMatch = section.match( /Other(?:\\s+Cup)?\\s*\\{\\{efn\\|Appearances in (.+?)\\.\\}\\}/i );
 		const parsedOtherNote = cleanValue( otherNoteMatch ? otherNoteMatch[ 1 ] : '' );
-		const lines = section.split( /\r?\n/ );
+		const tableRows = careerTableRows( section );
 		const hasLeagueName = /colspan\s*=\s*"3"\s*\|\s*League/i.test( section );
 		const hasLocalLeague = /colspan\s*=\s*"3"\s*\|\s*Local league/i.test( section );
 		if ( hasLocalLeague ) {
@@ -1551,7 +1611,7 @@
 		if ( hasLeagueCup ) {
 			leagueCupEnabled = true;
 		}
-		const hasNationalCup = /colspan\s*=\s*"2"\s*\|\s*(?:National\s+)?Cup\b/i.test( section );
+		const hasNationalCup = /colspan\s*=\s*"2"\s*\|\s*(?:\[\[)?(?:(?:National\s+)?Cup\b|Coppa Italia\b|FA Cup\b)/i.test( section );
 		const hasContinental = /colspan\s*=\s*"2"\s*\|\s*Continental/i.test( section );
 		const hasOther = /colspan\s*=\s*"2"\s*\|\s*Other(?:\s+Cup)?\b/i.test( section );
 		nationalCupEnabled = hasNationalCup;
@@ -1561,16 +1621,13 @@
 		let activeTeam = null;
 		let remainingTeamRows = 0;
 
-		lines.forEach( ( line ) => {
-			const trimmed = line.trim();
-			if ( trimmed.startsWith( '!' ) ) {
+		tableRows.forEach( ( tableRow ) => {
+			if ( tableRow.header ) {
 				activeTeam = null;
-			}
-			if ( !trimmed.startsWith( '|' ) || /^\|[-}+]/.test( trimmed ) ) {
 				return;
 			}
+			const rawCells = tableRow.cells;
 
-			const rawCells = trimmed.replace( /^\|\s*/, '' ).split( /\s*\|\|\s*/ );
 			if ( !rawCells.length ) {
 				return;
 			}
@@ -2339,6 +2396,17 @@
 			byTeamAndSeason.get( key ).push( row );
 		} );
 
+		// Older tables often omit the loan/reserve suffix found in the infobox.
+		const matchesIdentity = ( candidate, row ) => {
+			if ( rowTeamIdentityKey( candidate ) === rowTeamIdentityKey( row ) ) {
+				return true;
+			}
+			if ( normalizeBoolean( row.isLoan ) || clubAnnotationText( row ) ) {
+				return false;
+			}
+			return rowTeamIdentityKey( { ...candidate, isLoan: false,
+				reserveAnnotation: '', clubAnnotation: '', isGuest: false } ) === rowTeamIdentityKey( row );
+		};
 		const assignedReferences = new Set();
 		const enrichedRows = rows.map( ( row ) => {
 			const bounds = seasonBounds( row.season );
@@ -2360,7 +2428,7 @@
 						Number.isFinite( periodEnd ) &&
 						rowStart >= periodStart &&
 						( sameCalendarYear ? rowEnd <= periodEnd : rowStart <= periodEnd );
-					if ( rowTeamIdentityKey( candidate ) === rowTeamIdentityKey( row ) && withinPeriod ) {
+					if ( matchesIdentity( candidate, row ) && withinPeriod ) {
 						if ( !matchingPeriods.has( candidate.infoboxSourceIndex ) ) {
 							matchingPeriods.set( candidate.infoboxSourceIndex, candidate );
 						}
@@ -2373,7 +2441,7 @@
 			if ( !infoboxRow ) {
 				const clubPeriods = new Map();
 				infoboxRows.forEach( ( candidate ) => {
-					if ( rowTeamIdentityKey( candidate ) === rowTeamIdentityKey( row ) ) {
+					if ( matchesIdentity( candidate, row ) ) {
 						clubPeriods.set( candidate.infoboxSourceIndex, candidate );
 					}
 				} );
@@ -2392,6 +2460,7 @@
 			return {
 				...row,
 				infoboxYear: infoboxRow.infoboxYear,
+				isLoan: infoboxRow.isLoan,
 				reserveAnnotation: infoboxRow.reserveAnnotation,
 				isGuest: infoboxRow.isGuest,
 				clubAnnotation: infoboxRow.clubAnnotation,
