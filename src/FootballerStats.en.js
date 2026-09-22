@@ -2762,11 +2762,14 @@
 			}
 			if ( key === 'infoboxOnly' ) {
 				input.addEventListener( 'change', () => {
+					updateUiGrouping();
 					const selectionRow = { ...initialData };
-					Object.keys( data ).forEach( ( field ) => {
+					FIELD_KEYS.forEach( ( field ) => {
 						selectionRow[ field ] = data[ field ].type === 'checkbox' ?
 							data[ field ].checked : data[ field ].value;
 					} );
+					selectionRow.reserveAnnotation = data.reserveAnnotation;
+					selectionRow.clubAnnotation = data.clubAnnotation;
 					saveInfoboxOnlySelection( selectionRow, input.checked );
 					if ( input.checked ) {
 						data.leagueApps.value = '0';
@@ -3036,22 +3039,18 @@
 					middleInput.style.visibility = 'hidden';
 					middleInput.disabled = true;
 				}
-				// Keep each excluded season's checkbox visible, and start a new club
-				// cell below it without splitting the infobox career period.
-				for ( let start = i; start < i + span; start += 1 ) {
-					let end = start + 1;
-					if ( !rows[ start ].tfshData.inputs.infoboxOnly.checked ) {
-						while ( end < i + span && !rows[ end ].tfshData.inputs.infoboxOnly.checked ) {
-							end += 1;
-						}
-					}
+				// Expose every season's checkbox as soon as any season is excluded.
+				// Infobox years still belong to the original, uninterrupted spell.
+				const hasInfoboxOnly = rows.slice( i, i + span ).some(
+					( row ) => row.tfshData.inputs.infoboxOnly.checked
+				);
+				if ( !hasInfoboxOnly ) {
 					for ( const field of [ 'team', 'teamLink' ] ) {
-						rows[ start ].tfshData.cells[ field ].rowSpan = end - start;
-						for ( let j = start + 1; j < end; j += 1 ) {
+						current.tfshData.cells[ field ].rowSpan = span;
+						for ( let j = i + 1; j < i + span; j += 1 ) {
 							rows[ j ].tfshData.cells[ field ].style.display = 'none';
 						}
 					}
-					start = end - 1;
 				}
 				i += span - 1;
 			}
