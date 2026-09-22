@@ -523,6 +523,9 @@
 			const teamLink = cleanValue( row.teamLink );
 			renderedTeam = buildWikiLink( teamLink || team, team );
 		}
+		if ( options.infobox ) {
+			renderedTeam += ( row.teamRefs || [] ).join( '' );
+		}
 		const annotation = clubAnnotationText( row, options.infobox );
 		if ( annotation ) {
 			renderedTeam += ' ' + annotation;
@@ -1073,12 +1076,66 @@
 		return buildWikiLink( target, label );
 	}
 
+	const NOTE_NUMBER_WORDS = [ 'zero', 'one', 'two', 'three', 'four', 'five', 'six',
+		'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen',
+		'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen' ];
+	const NOTE_NUMBER_TENS = [ '', '', 'twenty', 'thirty', 'forty', 'fifty',
+		'sixty', 'seventy', 'eighty', 'ninety' ];
+	const NOTE_NUMBER_SCALES = [ [ 1e15, 'quadrillion' ], [ 1e12, 'trillion' ],
+		[ 1e9, 'billion' ], [ 1e6, 'million' ], [ 1000, 'thousand' ], [ 100, 'hundred' ] ];
+	const NOTE_NUMBER_PATTERN = '(?:\\d+|(?:' + [ ...NOTE_NUMBER_WORDS,
+		...NOTE_NUMBER_TENS.filter( Boolean ), ...NOTE_NUMBER_SCALES.map( ( scale ) => scale[ 1 ] ) ]
+		.join( '|' ) + ')(?:[ -](?:' + [ ...NOTE_NUMBER_WORDS,
+		...NOTE_NUMBER_TENS.filter( Boolean ), ...NOTE_NUMBER_SCALES.map( ( scale ) => scale[ 1 ] ) ]
+		.join( '|' ) + '))*)';
+
+	function formatNoteNumber( number ) {
+		if ( !Number.isSafeInteger( number ) || number < 0 ) {
+			return String( number );
+		}
+		if ( number < 20 ) {
+			return NOTE_NUMBER_WORDS[ number ];
+		}
+		if ( number < 100 ) {
+			return NOTE_NUMBER_TENS[ Math.floor( number / 10 ) ] +
+				( number % 10 ? '-' + NOTE_NUMBER_WORDS[ number % 10 ] : '' );
+		}
+		const [ scale, word ] = NOTE_NUMBER_SCALES.find( ( item ) => number >= item[ 0 ] );
+		return formatNoteNumber( Math.floor( number / scale ) ) + ' ' + word +
+			( number % scale ? ' ' + formatNoteNumber( number % scale ) : '' );
+	}
+
+	function parseNoteNumber( text ) {
+		if ( /^\d+$/.test( text ) ) {
+			return text;
+		}
+		let total = 0;
+		let group = 0;
+		text.toLowerCase().split( /[ -]/ ).forEach( ( word ) => {
+			const small = NOTE_NUMBER_WORDS.indexOf( word );
+			const tens = NOTE_NUMBER_TENS.indexOf( word );
+			if ( small >= 0 ) {
+				group += small;
+			} else if ( tens >= 2 ) {
+				group += tens * 10;
+			} else if ( word === 'hundred' ) {
+				group *= 100;
+			} else {
+				const scale = NOTE_NUMBER_SCALES.find( ( item ) => item[ 1 ] === word );
+				total += group * scale[ 0 ];
+				group = 0;
+			}
+		} );
+		return String( total + group );
+	}
+
 	function competitionNoteSentence( note ) {
 		const value = cleanValue( note );
 		if ( !value ) {
 			return '';
 		}
-		return /^\d+ appearances?\b/.test( value ) ? value : 'Appearances in ' + value + '.';
+		return new RegExp( '^' + NOTE_NUMBER_PATTERN + ' appearances?\\b', 'i' ).test( value ) ?
+			value : 'Appearances in ' + value + '.';
 	}
 
 	function formatCompetitionEntries( entries ) {
@@ -1092,11 +1149,12 @@
 		const parts = filled.map( ( entry ) => {
 			const apps = Number( entry.apps );
 			const goals = Number( entry.goals || 0 );
-			return apps + ( apps === 1 ? ' appearance' : ' appearances' ) +
-				( goals ? ' and ' + goals + ( goals === 1 ? ' goal' : ' goals' ) : '' ) +
+			return formatNoteNumber( apps ) + ( apps === 1 ? ' appearance' : ' appearances' ) +
+				( goals ? ' and ' + formatNoteNumber( goals ) + ( goals === 1 ? ' goal' : ' goals' ) : '' ) +
 				' in ' + competitionLink( entry.name );
 		} );
-		return joinCompetitionItems( parts ) + '.';
+		const sentence = joinCompetitionItems( parts ) + '.';
+		return sentence.charAt( 0 ).toUpperCase() + sentence.slice( 1 );
 	}
 
 	function parseCompetitionEntries( note ) {
@@ -1106,10 +1164,12 @@
 		}
 		const detailed = [];
 		let remainder = value.replace(
-			/(\d+) appearances?(?: and (\d+) goals?)? in (\[\[[^\]]+\]\])/g,
+			new RegExp( '(' + NOTE_NUMBER_PATTERN + ') appearances?(?: and (' +
+				NOTE_NUMBER_PATTERN + ') goals?)? in (\\[\\[[^\\]]+\\]\\])', 'gi' ),
 			( full, apps, goals, link ) => {
 				const target = link.match( /^\[\[([^|\]]+)/ )[ 1 ];
-				detailed.push( { name: target, apps, goals: goals || '0' } );
+				detailed.push( { name: target, apps: parseNoteNumber( apps ),
+					goals: goals ? parseNoteNumber( goals ) : '0' } );
 				return '';
 			}
 		);
@@ -4670,7 +4730,7 @@
 			const goalReferences = row.statRefs.goals.join( '' );
 			statLines.push( `| years${ n } = ${ seasonRange }${ row.yearRefs.join( '' ) }` );
 			const teamValue = formatTeamCell( row, { withArrow: true, infobox: true } );
-			statLines.push( `| clubs${ n } = ${ teamValue }${ row.teamRefs.join( '' ) }` );
+			statLines.push( `| clubs${ n } = ${ teamValue }` );
 			statLines.push( `| caps${ n } = ${ apps }${ appReferences }` );
 			statLines.push( `| goals${ n } = ${ goals }${ goalReferences }` );
 		} );
