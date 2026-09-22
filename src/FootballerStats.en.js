@@ -654,8 +654,8 @@
 	}
 
 	function joinedRow( marker, cells ) {
-		const separator = ` ${ marker }${ marker } `;
-		return `${ marker } ${ cells.join( separator ) }`;
+		const separator = `${ marker }${ marker }`;
+		return `${ marker }${ cells.join( separator ) }`;
 	}
 
 	function groupRowsByTeam( rows ) {
@@ -757,30 +757,32 @@
 			const cells = [];
 			lines.push( '|-' );
 			if ( index === 0 ) {
-				cells.push( `rowspan="${ rowSpan }" | ${ formatTeamCell( representative ) }` );
+				cells.push( rowSpan > 1 ?
+					`rowspan="${ rowSpan }"|${ formatTeamCell( representative ) }` :
+					formatTeamCell( representative ) );
 			}
 			cells.push( formatSeasonCell( row ) );
 			const leaguePair = pairDisplay( row.leagueApps, row.leagueGoals );
 			if ( !cleanValue( row.leagueName ) && leaguePair.merged ) {
-				cells.push( 'colspan="3" | —' );
+				cells.push( 'colspan="3"|—' );
 			} else {
 				cells.push( formatLeagueCell( row ) );
 				cells.push( ...( leaguePair.merged ?
-					[ `colspan="2" | ${ leaguePair.text }` ] :
+					[ `colspan="2"|${ leaguePair.text }` ] :
 					[ leaguePair.apps, leaguePair.missingGoals ?
-						`style="background:#fdd; color:#900" | ${ leaguePair.goals }` : leaguePair.goals ] ) );
+						`style="background:#fdd; color:#900"|${ leaguePair.goals }` : leaguePair.goals ] ) );
 			}
 			const competitionPairs = [];
 			if ( localLeagueEnabled ) {
 				const localLeaguePair = pairDisplay( row.localLeagueApps, row.localLeagueGoals );
 				if ( !cleanValue( row.localLeagueName ) && localLeaguePair.merged ) {
-					cells.push( 'colspan="3" | —' );
+					cells.push( 'colspan="3"|—' );
 				} else {
 					cells.push( formatLocalLeagueCell( row ) );
 					cells.push( ...( localLeaguePair.merged ?
-						[ `colspan="2" | ${ localLeaguePair.text }` ] :
+						[ `colspan="2"|${ localLeaguePair.text }` ] :
 						[ localLeaguePair.apps, localLeaguePair.missingGoals ?
-							`style="background:#fdd; color:#900" | ${ localLeaguePair.goals }` : localLeaguePair.goals ] ) );
+							`style="background:#fdd; color:#900"|${ localLeaguePair.goals }` : localLeaguePair.goals ] ) );
 				}
 			}
 			if ( nationalCupEnabled ) {
@@ -797,11 +799,11 @@
 			}
 			competitionPairs.forEach( ( pair ) => {
 				if ( pair.merged ) {
-					cells.push( `colspan="2" | ${ pair.text }${ pair.note }` );
+					cells.push( `colspan="2"|${ pair.text }${ pair.note }` );
 				} else {
 					cells.push( pair.apps + pair.note );
 					cells.push( pair.missingGoals ?
-						`style="background:#fdd; color:#900" | ${ pair.goals }` : pair.goals );
+						`style="background:#fdd; color:#900"|${ pair.goals }` : pair.goals );
 				}
 			} );
 			if ( rowTotal.unknown ) {
@@ -817,7 +819,7 @@
 		if ( totalRows.length > 1 ) {
 			lines.push( '|-' );
 			const totalCells = [
-				'colspan="2" | Total',
+				'colspan="2"|Total',
 				groupLeagueApps.unknown ? '?' : String( groupLeagueApps.total ),
 				groupLeagueGoals.unknown ? '?' : String( groupLeagueGoals.total )
 			];
@@ -980,7 +982,7 @@
 		if ( groups.length > 1 ) {
 			lines.push( '|-' );
 			const grandCells = [
-				'colspan="3" | Career total',
+				'colspan="3"|Career total',
 				grandLeagueApps.unknown ? '?' : String( grandLeagueApps.total ),
 				grandLeagueGoals.unknown ? '?' : String( grandLeagueGoals.total )
 			];
@@ -1290,9 +1292,9 @@
 
 	function extractCellContent( cellText ) {
 		const cell = cleanValue( cellText ).replace( /\{\{!\}\}/g, '|' );
-		const attrIndex = cell.indexOf( ' | ' );
-		if ( attrIndex !== -1 && !cell.startsWith( '[[' ) ) {
-			return cleanValue( cell.slice( attrIndex + 3 ) );
+		const attrIndex = cell.indexOf( '|' );
+		if ( attrIndex !== -1 && /^(?:rowspan|colspan|style|class|align|valign|width|height|scope)\s*=/i.test( cell ) ) {
+			return cleanValue( cell.slice( attrIndex + 1 ) );
 		}
 		return cell;
 	}
@@ -1557,14 +1559,18 @@
 		otherEnabled = hasOther;
 		const rows = [];
 		let activeTeam = null;
+		let remainingTeamRows = 0;
 
 		lines.forEach( ( line ) => {
 			const trimmed = line.trim();
-			if ( !trimmed.startsWith( '| ' ) || /^!\s/.test( trimmed ) ) {
+			if ( trimmed.startsWith( '!' ) ) {
+				activeTeam = null;
+			}
+			if ( !trimmed.startsWith( '|' ) || /^\|[-}+]/.test( trimmed ) ) {
 				return;
 			}
 
-			const rawCells = trimmed.replace( /^\|\s*/, '' ).split( /\s\|\|\s/ );
+			const rawCells = trimmed.replace( /^\|\s*/, '' ).split( /\s*\|\|\s*/ );
 			if ( !rawCells.length ) {
 				return;
 			}
@@ -1576,15 +1582,15 @@
 			let seasonCellIndex = 0;
 			let statStartIndex = 1;
 			const firstCell = cleanValue( rawCells[ 0 ] );
-			if ( /^rowspan\s*=/i.test( firstCell ) ) {
+			if ( /^rowspan\s*=/i.test( firstCell ) || !activeTeam ) {
+				const span = firstCell.match( /^rowspan\s*=\s*["']?(\d+)/i );
+				remainingTeamRows = span ? Number( span[ 1 ] ) : 1;
 				activeTeam = {
 					...parseTeamValue( extractCellContent( firstCell ) ),
 					clubSpellId: `table:${ rows.length }`
 				};
 				seasonCellIndex = 1;
 				statStartIndex = 2;
-			} else if ( !activeTeam ) {
-				return;
 			}
 
 			const seasonCell = extractCellContent( rawCells[ seasonCellIndex ] || '' );
@@ -1609,6 +1615,10 @@
 					namedNotes
 				)
 			} );
+			remainingTeamRows -= 1;
+			if ( remainingTeamRows <= 0 ) {
+				activeTeam = null;
+			}
 		} );
 
 		if ( parsedOtherNote ) {
