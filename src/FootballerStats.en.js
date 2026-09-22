@@ -1297,8 +1297,59 @@
 		};
 	}
 
+	function splitInfoboxClubAnnotations( value ) {
+		const text = cleanValue( value );
+		const references = [];
+		let plain = '';
+		let linkDepth = 0;
+		for ( let i = 0; i < text.length; ) {
+			const opaque = text.slice( i ).match(
+				/^(?:<ref\b[^>]*\/\s*>|<ref\b[^>]*>[\s\S]*?<\/ref\s*>|<!--[\s\S]*?-->)/i
+			);
+			if ( opaque ) {
+				references.push( opaque[ 0 ] );
+				i += opaque[ 0 ].length;
+				continue;
+			}
+			const pair = text.slice( i, i + 2 );
+			if ( pair === '{{' && linkDepth === 0 && cleanValue( plain ) ) {
+				// Keep the entire template opaque, including nested templates and references.
+				const tokens = /<!--[\s\S]*?-->|<ref\b[^>]*\/\s*>|<ref\b[^>]*>[\s\S]*?<\/ref\s*>|\x3cnowiki\b[^>]*\/\s*>|\x3cnowiki\b[^>]*>[\s\S]*?<\/nowiki\s*>|\{+|\}+/gi;
+				tokens.lastIndex = i;
+				let depth = 0;
+				let end = text.length;
+				let token;
+				while ( ( token = tokens.exec( text ) ) ) {
+					if ( token[ 0 ][ 0 ] === '{' ) {
+						depth += token[ 0 ].length;
+					} else if ( token[ 0 ][ 0 ] === '}' ) {
+						depth -= token[ 0 ].length;
+						if ( depth <= 0 ) {
+							end = tokens.lastIndex;
+							break;
+						}
+					}
+				}
+				const spacing = plain.match( /\s*$/ )[ 0 ];
+				plain = plain.slice( 0, plain.length - spacing.length );
+				references.push( spacing + text.slice( i, end ) );
+				i = end;
+				continue;
+			}
+			if ( pair === '[[' || pair === ']]' ) {
+				linkDepth += pair === '[[' ? 1 : -1;
+				plain += pair;
+				i += 2;
+			} else {
+				plain += text[ i ];
+				i += 1;
+			}
+		}
+		return { value: cleanValue( plain ), references };
+	}
+
 	function parseTeamValue( value ) {
-		value = splitInfoboxReferences( value ).value;
+		value = splitInfoboxClubAnnotations( value ).value;
 		const loanPrefixMatch = value.match( /^(?:→|â†’)\s*(.*)$/ );
 		const withoutArrow = cleanValue( loanPrefixMatch ? loanPrefixMatch[ 1 ] : value );
 		const annotations = withoutArrow.replace( /\[\[[^\]]+\]\]/g, '' );
@@ -2183,7 +2234,7 @@
 				row.seasonLink = '';
 				row.disableSeasonLink = !cleanValue( normalizedValue );
 			} else if ( field === 'clubs' ) {
-				const teamValue = splitInfoboxReferences( value );
+				const teamValue = splitInfoboxClubAnnotations( value );
 				const parsedTeam = parseTeamValue( teamValue.value );
 				row.infoboxRefs.team = teamValue.references;
 				row.team = parsedTeam.team;
@@ -3733,8 +3784,14 @@
 		const prefixLines = source.slice( 0, tableStart ).split( /\r?\n/ );
 		for ( let index = prefixLines.length - 1; index >= 0; index-- ) {
 			const line = prefixLines[ index ];
-			if ( /^\s*\{\{\s*Updated\s*\|[^\n]*\}\}\s*$/i.test( line ) ) {
-				prefixLines.splice( index, 1 );
+			const update = line.match( /^\s*\{\{\s*Updated\s*\|[^\n]*?\}\}(?=\s*(?:<ref\b|$))/i );
+			if ( update ) {
+				const remainder = line.slice( update[ 0 ].length );
+				if ( cleanValue( remainder ) ) {
+					prefixLines[ index ] = remainder;
+				} else {
+					prefixLines.splice( index, 1 );
+				}
 			} else if ( cleanValue( line ) && !/<ref\b/i.test( line ) ) {
 				break;
 			}
@@ -3779,7 +3836,8 @@
 		}
 		const updateMatch = body.match( /^(\{\{Updated\|[^\n]+\}\})\n/m );
 		if ( updateMatch ) {
-			return body.slice( 0, updateMatch.index + updateMatch[ 0 ].length ) + references + '\n' + body.slice( updateMatch.index + updateMatch[ 0 ].length );
+			const insertAt = updateMatch.index + updateMatch[ 1 ].length;
+			return body.slice( 0, insertAt ) + references + body.slice( insertAt );
 		}
 		const tableIndex = body.indexOf( '{|' );
 		if ( tableIndex === -1 ) {
@@ -3967,7 +4025,7 @@
 		let match;
 		while ( ( match = leadingNotelist.exec( result ) ) !== null ) {
 			const start = match[ 1 ].length;
-			const tokens = /<!--[\s\S]*?-->|<nowiki\b[^>]*>[\s\S]*?<\/nowiki\s*>|\{\{|\}\}/gi;
+			const tokens = /<!--[\s\S]*?-->|\x3cnowiki\b[^>]*>[\s\S]*?<\/nowiki\s*>|\{\{|\}\}/gi;
 			tokens.lastIndex = start;
 			let depth = 0;
 			let end = -1;
