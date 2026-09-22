@@ -763,11 +763,11 @@
 					formatTeamCell( representative ) ) );
 			}
 			lines.push( '|' + formatSeasonCell( row ) );
-			const leaguePair = pairDisplay( row.leagueApps, row.leagueGoals );
+			const leaguePair = tableStatPair( row, 'leagueApps', 'leagueGoals' );
 			if ( !cleanValue( row.leagueName ) && leaguePair.merged ) {
-				lines.push( '|colspan="3"|—' );
+				lines.push( '|colspan="3"|' + leaguePair.text + tableCellReferences( row, 'leagueName' ) );
 			} else {
-				lines.push( '|' + formatLeagueCell( row ) );
+				lines.push( '|' + formatLeagueCell( row ) + tableCellReferences( row, 'leagueName' ) );
 				cells.push( ...( leaguePair.merged ?
 					[ `colspan="2"|${ leaguePair.text }` ] :
 					[ leaguePair.apps, leaguePair.missingGoals ?
@@ -775,11 +775,11 @@
 			}
 			const competitionPairs = [];
 			if ( localLeagueEnabled ) {
-				const localLeaguePair = pairDisplay( row.localLeagueApps, row.localLeagueGoals );
+				const localLeaguePair = tableStatPair( row, 'localLeagueApps', 'localLeagueGoals' );
 				if ( !cleanValue( row.localLeagueName ) && localLeaguePair.merged ) {
-					cells.push( 'colspan="3"|—' );
+					cells.push( 'colspan="3"|' + localLeaguePair.text + tableCellReferences( row, 'localLeagueName' ) );
 				} else {
-					cells.push( formatLocalLeagueCell( row ) );
+					cells.push( formatLocalLeagueCell( row ) + tableCellReferences( row, 'localLeagueName' ) );
 					cells.push( ...( localLeaguePair.merged ?
 						[ `colspan="2"|${ localLeaguePair.text }` ] :
 						[ localLeaguePair.apps, localLeaguePair.missingGoals ?
@@ -814,6 +814,8 @@
 				cells.push( String( rowTotal.apps ) );
 				cells.push( String( rowTotal.goals ) );
 			}
+			cells[ cells.length - 2 ] += tableCellReferences( row, 'totalApps' );
+			cells[ cells.length - 1 ] += tableCellReferences( row, 'totalGoals' );
 			lines.push( joinedRow( '|', cells ) );
 		} );
 
@@ -1212,8 +1214,20 @@
 		return true;
 	}
 
-	function competitionPair( row, appsKey, goalsKey, noteNames ) {
+	function tableCellReferences( row, key ) {
+		return ( row.tableCellRefs && row.tableCellRefs[ key ] || [] ).join( '' );
+	}
+
+	function tableStatPair( row, appsKey, goalsKey ) {
 		const pair = pairDisplay( row[ appsKey ], row[ goalsKey ] );
+		const appsRefs = tableCellReferences( row, appsKey );
+		const goalsRefs = tableCellReferences( row, goalsKey );
+		return pair.merged ? { ...pair, text: pair.text + appsRefs + goalsRefs } :
+			{ ...pair, apps: pair.apps + appsRefs, goals: pair.goals + goalsRefs };
+	}
+
+	function competitionPair( row, appsKey, goalsKey, noteNames ) {
+		const pair = tableStatPair( row, appsKey, goalsKey );
 		if ( pair.merged ) {
 			return { ...pair, note: '' };
 		}
@@ -1451,9 +1465,17 @@
 			otherApps: '',
 			otherGoals: ''
 		};
+		values.tableCellRefs = {};
+		const readCell = ( key, index ) => {
+			const parsed = splitInfoboxReferences( cells[ index ] || '' );
+			if ( parsed.references.length ) {
+				values.tableCellRefs[ key ] = parsed.references;
+			}
+			return parsed.value;
+		};
 		let cursor = startIndex;
 		const readLeagueName = ( key ) => {
-			const rawLeagueCell = cleanValue( cells[ cursor ] || '' );
+			const rawLeagueCell = readCell( key, cursor );
 			const spansStatistics = /^colspan\s*=\s*["']?3["']?\s*\|/i.test( rawLeagueCell );
 			const leagueCell = extractCellContent( rawLeagueCell );
 			if ( leagueCell && !/^[-–—−]$/.test( leagueCell ) ) {
@@ -1474,9 +1496,10 @@
 		};
 		values.competitionNotes = {};
 		const readPair = ( appsKey, goalsKey ) => {
+			const rawValue = readCell( appsKey, cursor );
 			const parsed = COMPETITION_NOTE_LABELS[ appsKey ] ?
-				splitCompetitionNote( cleanValue( cells[ cursor ] || '' ), namedNotes ) :
-				{ value: cleanValue( cells[ cursor ] || '' ), note: '' };
+				splitCompetitionNote( rawValue, namedNotes ) :
+				{ value: rawValue, note: '' };
 			const current = cleanValue( parsed.value );
 			if ( parsed.note ) {
 				values.competitionNotes[ appsKey ] = parsed.note;
@@ -1485,8 +1508,8 @@
 				cursor += 1;
 				return;
 			}
-			values[ appsKey ] = current;
-			values[ goalsKey ] = cleanValue( cells[ cursor + 1 ] || '' );
+			values[ appsKey ] = extractCellContent( current );
+			values[ goalsKey ] = extractCellContent( readCell( goalsKey, cursor + 1 ) );
 			cursor += 2;
 		};
 
@@ -1515,6 +1538,8 @@
 			readPair( 'otherApps', 'otherGoals' );
 		}
 
+		readCell( 'totalApps', cursor );
+		readCell( 'totalGoals', cursor + 1 );
 		return values;
 	}
 
@@ -2601,6 +2626,7 @@
 			Object.keys( initialData ).length === 0 : normalizeBoolean( initialData.infoboxYearPending );
 		usedClubSpellIds.add( tr.tfshClubSpellId );
 		tr.tfshInfoboxStatRefs = initialData.infoboxStatRefs || {};
+		tr.tfshTableCellRefs = { ...initialData.tableCellRefs };
 		tr.tfshCompetitionNotes = { ... initialData.competitionNotes };
 		tr.tfshCompetitionNoteButtons = {};
 		tr.tfshCompetitionNotePropagationDone = { ... initialData.competitionNotePropagationDone };
@@ -3408,6 +3434,7 @@
 				row.clubSpellId = tr.tfshClubSpellId;
 				row.infoboxOriginalSeason = tr.tfshInfoboxOriginalSeason || '';
 				row.infoboxStatRefs = tr.tfshInfoboxStatRefs || {};
+				row.tableCellRefs = { ...tr.tfshTableCellRefs };
 				updateCompetitionNoteValidity( tr );
 				row.competitionNotes = { ...tr.tfshCompetitionNotes };
 				row.competitionNotePropagationDone = { ...tr.tfshCompetitionNotePropagationDone };
