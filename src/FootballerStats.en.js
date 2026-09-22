@@ -1728,7 +1728,7 @@
 				row.competitionNotes.otherApps = row.competitionNotes.otherApps || parsedOtherNote;
 			} );
 		}
-		return { rows, otherNote: parsedOtherNote };
+		return { rows, otherNote: parsedOtherNote, hasTable: true };
 	}
 
 	function topLevelTemplateParameters( templateText ) {
@@ -3807,6 +3807,10 @@
 				leagueCupEnabled = parsedColumnStates.leagueCup;
 				otherEnabled = parsedColumnStates.other;
 			}
+			// Published table columns are shared by all editors; local preferences
+			// must not override them. Without a recognized table, use the defaults.
+			continentalEnabled = parsedCareer.hasTable ? parsedColumnStates.continental : true;
+			otherEnabled = parsedCareer.hasTable ? parsedColumnStates.other : true;
 			if ( parsedCareer.rows.length ) {
 				clearUiRows();
 				otherNote = parsedCareer.otherNote;
@@ -3824,11 +3828,6 @@
 				clearUiRows();
 				otherNote = '';
 				infoboxRows.forEach( ( row ) => createRow( row ) );
-				const savedOtherColumnPreference = getSavedOtherColumnState();
-				if ( savedOtherColumnPreference !== null &&
-					!Object.keys( getSavedColumnStates() ).length ) {
-					otherEnabled = savedOtherColumnPreference;
-				}
 				markLoadedLeagueNamesAsPropagated();
 				refreshPreview();
 				await resolveLoadedTeamRedirects();
@@ -3845,6 +3844,8 @@
 			const saved = JSON.parse( mw.storage.get( getRowsStorageKey() ) || '[]' );
 			otherNote = cleanValue( mw.storage.get( getOtherNoteStorageKey() ) || '' );
 			applySavedColumnStates();
+			continentalEnabled = true;
+			otherEnabled = true;
 			if ( Array.isArray( saved ) && saved.length ) {
 				clearUiRows();
 				saved.forEach( ( row ) => createRow( row ) );
