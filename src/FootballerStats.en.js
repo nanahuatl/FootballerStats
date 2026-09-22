@@ -3026,11 +3026,7 @@
 				currentInputs.infoboxYear.placeholder = 'Start';
 				const lastInputs = rows[ i + span - 1 ].tfshData.inputs;
 				lastInputs.infoboxYear.placeholder = 'End';
-				current.tfshData.cells.team.rowSpan = span;
-				current.tfshData.cells.teamLink.rowSpan = span;
 				for ( let j = i + 1; j < i + span; j += 1 ) {
-					rows[ j ].tfshData.cells.team.style.display = 'none';
-					rows[ j ].tfshData.cells.teamLink.style.display = 'none';
 					if ( rows[ j - 1 ].tfshData.addSeasonLink ) {
 						rows[ j - 1 ].tfshData.addSeasonLink.style.display = 'none';
 					}
@@ -3039,6 +3035,23 @@
 					const middleInput = rows[ j ].tfshData.inputs.infoboxYear;
 					middleInput.style.visibility = 'hidden';
 					middleInput.disabled = true;
+				}
+				// Keep each excluded season's checkbox visible, and start a new club
+				// cell below it without splitting the infobox career period.
+				for ( let start = i; start < i + span; start += 1 ) {
+					let end = start + 1;
+					if ( !rows[ start ].tfshData.inputs.infoboxOnly.checked ) {
+						while ( end < i + span && !rows[ end ].tfshData.inputs.infoboxOnly.checked ) {
+							end += 1;
+						}
+					}
+					for ( const field of [ 'team', 'teamLink' ] ) {
+						rows[ start ].tfshData.cells[ field ].rowSpan = end - start;
+						for ( let j = start + 1; j < end; j += 1 ) {
+							rows[ j ].tfshData.cells[ field ].style.display = 'none';
+						}
+					}
+					start = end - 1;
 				}
 				i += span - 1;
 			}
