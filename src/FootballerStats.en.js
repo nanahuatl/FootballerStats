@@ -237,6 +237,25 @@
 		return `${ OTHER_NOTE_KEY_PREFIX }:${ getPageStorageSuffix() }`;
 	}
 
+	function infoboxOnlySelectionKey( row ) {
+		return JSON.stringify( [ rowTeamIdentityKey( row ), cleanValue( row.season ) ] );
+	}
+
+	function readInfoboxOnlySelections() {
+		try {
+			const saved = JSON.parse( mw.storage.get( `${ getRowsStorageKey() }:infobox-only` ) || '{}' );
+			return saved && typeof saved === 'object' && !Array.isArray( saved ) ? saved : {};
+		} catch ( error ) {
+			return {};
+		}
+	}
+
+	function saveInfoboxOnlySelection( row, checked ) {
+		const saved = readInfoboxOnlySelections();
+		saved[ infoboxOnlySelectionKey( row ) ] = checked;
+		mw.storage.set( `${ getRowsStorageKey() }:infobox-only`, JSON.stringify( saved ) );
+	}
+
 	function getOtherColumnStorageKey() {
 		return `${ OTHER_COLUMN_KEY_PREFIX }:${ getPageStorageSuffix() }`;
 	}
@@ -2535,7 +2554,7 @@
 			}
 			missingPeriods.get( row.infoboxSourceIndex ).push( {
 				...row,
-				infoboxOnly: !( Number( stripHtmlComments( row.leagueApps ) ) > 0 )
+				infoboxOnly: false
 			} );
 		} );
 		missingPeriods.forEach( ( missingRows, sourceIndex ) => {
@@ -2611,6 +2630,10 @@
 	const usedClubSpellIds = new Set();
 
 	function createRow( initialData = {} ) {
+		const savedSelection = readInfoboxOnlySelections()[ infoboxOnlySelectionKey( initialData ) ];
+		if ( Object.keys( initialData ).length ) {
+			initialData = { ...initialData, infoboxOnly: savedSelection === true };
+		}
 		const tr = document.createElement( 'tr' );
 		tr.tfshPreviousSeason = cleanValue( initialData.season );
 		tr.tfshSeasonSequenceHandled = normalizeBoolean( initialData.seasonSequenceHandled );
@@ -2739,6 +2762,12 @@
 			}
 			if ( key === 'infoboxOnly' ) {
 				input.addEventListener( 'change', () => {
+					const selectionRow = { ...initialData };
+					Object.keys( data ).forEach( ( field ) => {
+						selectionRow[ field ] = data[ field ].type === 'checkbox' ?
+							data[ field ].checked : data[ field ].value;
+					} );
+					saveInfoboxOnlySelection( selectionRow, input.checked );
 					if ( input.checked ) {
 						data.leagueApps.value = '0';
 						data.leagueGoals.value = '0';
