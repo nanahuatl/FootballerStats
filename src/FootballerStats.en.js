@@ -482,6 +482,18 @@
 		return `[[${ escapeCell( cleanTarget ) }|${ escapeCell( cleanLabel ) }]]`;
 	}
 
+	function clubAnnotationText( row, infobox = false ) {
+		let annotation = row.clubAnnotation;
+		if ( annotation === undefined ) {
+			annotation = [ cleanValue( row.reserveAnnotation ),
+				normalizeBoolean( row.isGuest ) ? '(guest)' : '' ].filter( Boolean ).join( ' ' );
+		}
+		return infobox ? cleanValue( annotation ) : cleanValue( annotation ).replace(
+			/\[\[[^\]]+\]\]|\(\s*(?:res\.|reserve)\s*\)/gi,
+			( part ) => part.startsWith( '[[' ) ? part : '(reserve)'
+		);
+	}
+
 	function formatTeamCell( row, options = {} ) {
 		const team = cleanValue( row.team );
 		let renderedTeam;
@@ -491,11 +503,12 @@
 			const teamLink = cleanValue( row.teamLink );
 			renderedTeam = buildWikiLink( teamLink || team, team );
 		}
+		const annotation = clubAnnotationText( row, options.infobox );
+		if ( annotation ) {
+			renderedTeam += ' ' + annotation;
+		}
 		if ( normalizeBoolean( row.isLoan ) ) {
 			return options.withArrow ? `→ ${ renderedTeam } (loan)` : `${ renderedTeam } (loan)`;
-		}
-		if ( normalizeBoolean( row.isGuest ) ) {
-			return `${ renderedTeam } (guest)`;
 		}
 		return renderedTeam;
 	}
@@ -659,6 +672,8 @@
 				normalizeBoolean( row.isLoan ),
 				normalizeBoolean( row.disableTeamLink ),
 				normalizeBoolean( row.isGuest ),
+				Boolean( cleanValue( row.reserveAnnotation ) ),
+				clubAnnotationText( row ),
 				row.clubSpellId ?? row.infoboxSourceIndex
 			] );
 			const previous = groups[ groups.length - 1 ];
@@ -681,7 +696,9 @@
 			cleanValue( row.team ),
 			cleanValue( row.teamLink ),
 			normalizeBoolean( row.isLoan ),
-			normalizeBoolean( row.disableTeamLink )
+			normalizeBoolean( row.disableTeamLink ),
+			Boolean( cleanValue( row.reserveAnnotation ) ),
+			clubAnnotationText( row )
 		] );
 	}
 
@@ -1332,7 +1349,16 @@
 				}
 				const spacing = plain.match( /\s*$/ )[ 0 ];
 				plain = plain.slice( 0, plain.length - spacing.length );
-				references.push( spacing + text.slice( i, end ) );
+				const template = text.slice( i, end );
+				// Formatting wrappers are readable; note templates remain opaque.
+				const formattedLoan = template.match( /^\{\{\s*(?:small|smaller|nowrap|nobr|italic|italics)\s*\|\s*(?:1\s*=\s*)?([^{}|]*)\}\}$/i );
+				if ( formattedLoan && /^\(?\s*(?:on\s+)?loan\s*\)?$/i.test(
+					formattedLoan[ 1 ].replace( /<[^>]*>|'{2,5}/g, '' ).trim()
+				) ) {
+					plain += spacing + ' (loan)';
+				} else {
+					references.push( spacing + template );
+				}
 				i = end;
 				continue;
 			}
@@ -1352,33 +1378,44 @@
 		value = splitInfoboxClubAnnotations( value ).value;
 		const loanPrefixMatch = value.match( /^(?:→|â†’)\s*(.*)$/ );
 		const withoutArrow = cleanValue( loanPrefixMatch ? loanPrefixMatch[ 1 ] : value );
-		const annotations = withoutArrow.replace( /\[\[[^\]]+\]\]/g, '' );
-		const hasGuestText = /\bguest\b/i.test( annotations );
-		const hasLoanText = /\bloan\b/i.test( annotations ) && !hasGuestText;
-		const baseValue = cleanValue(
-			hasGuestText ?
-				withoutArrow
-					.replace( /\(\s*guest\s*\)/gi, '' )
-					.replace( /\s+guest\s*$/i, '' )
-					.replace( /'{2,5}/g, '' ) :
-				hasLoanText ?
-					withoutArrow
-						.replace( /\{\{\s*(?:small)\s*\|[^{}]*loan[^{}]*\}\}/gi, '' )
-						.replace( /<small\b[^>]*>[^<]*loan[^<]*<\/small>/gi, '' )
-						.replace( /'{2,5}\s*\(?\s*loan\s*\)?\s*'{2,5}/gi, '' )
-						.replace( /\(\s*loan\s*\)/gi, '' )
-						.replace( /\s+loan\s*$/i, '' )
-						.replace( /'{2,5}/g, '' ) :
-					withoutArrow
-		);
-		const teamLink = baseValue.match( /\[\[[^\]]+\]\]/ );
-		const link = parseWikiLinkValue( teamLink ? teamLink[ 0 ] : baseValue );
+		const teamLink = withoutArrow.match( /\[\[[^\]]+\]\]/ );
+		const suffixStart = teamLink ? teamLink.index + teamLink[ 0 ].length :
+			withoutArrow.search( /\s+(?=\(|<(?:small|span|i|em|b|strong)\b|'{2}|(?:on\s+)?loan\s*$|guest\s*$)/i );
+		const club = teamLink ? teamLink[ 0 ] :
+			suffixStart === -1 ? withoutArrow : withoutArrow.slice( 0, suffixStart );
+		let annotation = suffixStart === -1 ? '' : cleanValue( withoutArrow.slice( suffixStart ) );
+		const visibleAnnotation = annotation.replace( /<[^>]*>|'{2,5}/g, '' )
+			.replace( /\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g, ( full, target, label ) => label || target );
+		const hasLoanText = /\bloan\b/i.test( visibleAnnotation );
+		const reserveMatch = visibleAnnotation.match( /\(\s*(?:res\.|reserve)\s*\)/i );
+		const hasGuestText = /\bguest\b/i.test( visibleAnnotation );
+		if ( hasLoanText ) {
+			annotation = annotation.replace( /<[^>]*>|\[\[[^\]]+\]\]|\b(?:on\s+)?loan\b/gi,
+				( part ) => {
+					if ( part.startsWith( '<' ) ) {
+						return part;
+					}
+					if ( part.startsWith( '[[' ) ) {
+						const annotationLink = parseWikiLinkValue( part );
+						return /^(?:on\s+)?loan$/i.test( annotationLink.label ) ? '' : part;
+					}
+					return '';
+				} );
+			let previous;
+			do {
+				previous = annotation;
+				annotation = annotation.replace( /\(\s*\)|'{2,5}\s*'{2,5}|<(small|span|i|em|b|strong)\b[^>]*>\s*<\/\1\s*>/gi, '' );
+			} while ( annotation !== previous );
+		}
+		const link = parseWikiLinkValue( club );
 		return {
 			team: link.label,
 			teamLink: link.target,
 			disableTeamLink: link.disableLink,
 			isLoan: !!loanPrefixMatch || hasLoanText,
-			isGuest: hasGuestText
+			isGuest: hasGuestText,
+			reserveAnnotation: reserveMatch ? reserveMatch[ 0 ] : '',
+			clubAnnotation: cleanValue( annotation )
 		};
 	}
 
@@ -2241,6 +2278,9 @@
 				row.teamLink = parsedTeam.teamLink;
 				row.disableTeamLink = parsedTeam.disableTeamLink;
 				row.isLoan = parsedTeam.isLoan;
+				row.reserveAnnotation = parsedTeam.reserveAnnotation;
+				row.isGuest = parsedTeam.isGuest;
+				row.clubAnnotation = parsedTeam.clubAnnotation;
 			} else if ( field === 'caps' ) {
 				const stat = splitInfoboxReferences( value );
 				row.leagueApps = stripHtmlComments( stat.value ).includes( '+' ) ? '?' : stat.value;
@@ -2339,6 +2379,9 @@
 			return {
 				...row,
 				infoboxYear: infoboxRow.infoboxYear,
+				reserveAnnotation: infoboxRow.reserveAnnotation,
+				isGuest: infoboxRow.isGuest,
+				clubAnnotation: infoboxRow.clubAnnotation,
 				infoboxSourceIndex: infoboxRow.infoboxSourceIndex,
 				clubSpellId: infoboxRow.clubSpellId,
 				infoboxOriginalSeason: infoboxRow.infoboxOriginalSeason,
@@ -2703,6 +2746,8 @@
 		} );
 
 		data.clubSpellId = tr.tfshClubSpellId;
+		data.reserveAnnotation = cleanValue( initialData.reserveAnnotation );
+		data.clubAnnotation = clubAnnotationText( initialData, true );
 		const statPairs = [
 			[ 'leagueApps', 'leagueGoals' ],
 			[ 'localLeagueApps', 'localLeagueGoals' ],
@@ -2781,7 +2826,9 @@
 			cleanValue( inputs.teamLink.value ),
 			inputs.isLoan.checked,
 			inputs.disableTeamLink.checked,
-			inputs.clubSpellId
+			inputs.clubSpellId,
+			Boolean( cleanValue( inputs.reserveAnnotation ) ),
+			clubAnnotationText( inputs )
 		] );
 	}
 
@@ -3170,6 +3217,9 @@
 			teamLink: base.teamLink,
 			teamLinkAuto: base.teamLinkAuto,
 			isLoan: base.isLoan,
+			reserveAnnotation: base.reserveAnnotation,
+			isGuest: base.isGuest,
+			clubAnnotation: base.clubAnnotation,
 			disableTeamLink: base.disableTeamLink,
 			season: nextSeasonValue( base.season ),
 			seasonSequenceHandled: base.seasonSequenceHandled,
@@ -3217,6 +3267,9 @@
 		}
 		if ( sourceTr ) {
 			seed.seasonSequenceHandled = sourceTr.tfshSeasonSequenceHandled;
+			seed.reserveAnnotation = sourceTr.tfshData.inputs.reserveAnnotation;
+			seed.clubAnnotation = sourceTr.tfshData.inputs.clubAnnotation;
+			seed.isGuest = sourceTr.tfshIsGuest;
 			seed.competitionNotePropagationDone = { ...sourceTr.tfshCompetitionNotePropagationDone };
 			seed.teamLinkAuto = sourceTr.tfshData.inputs.teamLink.dataset.tfshAutoTeamLink === '1';
 			const peers = Array.from( tbody.querySelectorAll( 'tr' ) ).filter( ( tr ) => (
@@ -3273,6 +3326,8 @@
 				row.competitionNotePropagationDone = { ...tr.tfshCompetitionNotePropagationDone };
 				row.infoboxRefs = tr.tfshInfoboxRefs || {};
 				row.isGuest = tr.tfshIsGuest;
+				row.reserveAnnotation = tr.tfshData.inputs.reserveAnnotation;
+				row.clubAnnotation = tr.tfshData.inputs.clubAnnotation;
 				return row;
 			} )
 			.filter( ( row ) => row.team || row.season );
@@ -4254,6 +4309,8 @@
 				normalizeBoolean( row.isLoan ),
 				normalizeBoolean( row.disableTeamLink ),
 				normalizeBoolean( row.isGuest ),
+				Boolean( cleanValue( row.reserveAnnotation ) ),
+				clubAnnotationText( row ),
 				row.clubSpellId ?? row.infoboxSourceIndex
 			] );
 			const previous = aggregated[ aggregated.length - 1 ];
@@ -4333,6 +4390,8 @@
 				teamLink: cleanValue( row.teamLink ),
 				isLoan,
 				isGuest: normalizeBoolean( row.isGuest ),
+				reserveAnnotation: cleanValue( row.reserveAnnotation ),
+				clubAnnotation: clubAnnotationText( row, true ),
 				disableTeamLink: normalizeBoolean( row.disableTeamLink ),
 				seasons: [ cleanValue( row.season ) ],
 				infoboxYears: [ cleanValue( row.infoboxYear ) ],
@@ -4438,7 +4497,7 @@
 			const appReferences = row.statRefs.apps.join( '' );
 			const goalReferences = row.statRefs.goals.join( '' );
 			statLines.push( `| years${ n } = ${ seasonRange }${ row.yearRefs.join( '' ) }` );
-			const teamValue = formatTeamCell( row, { withArrow: true } );
+			const teamValue = formatTeamCell( row, { withArrow: true, infobox: true } );
 			statLines.push( `| clubs${ n } = ${ teamValue }${ row.teamRefs.join( '' ) }` );
 			statLines.push( `| caps${ n } = ${ apps }${ appReferences }` );
 			statLines.push( `| goals${ n } = ${ goals }${ goalReferences }` );
