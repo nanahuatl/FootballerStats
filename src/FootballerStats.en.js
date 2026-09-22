@@ -758,16 +758,16 @@
 			const cells = [];
 			lines.push( '|-' );
 			if ( index === 0 ) {
-				cells.push( rowSpan > 1 ?
+				lines.push( '|' + ( rowSpan > 1 ?
 					`rowspan="${ rowSpan }"|${ formatTeamCell( representative ) }` :
-					formatTeamCell( representative ) );
+					formatTeamCell( representative ) ) );
 			}
-			cells.push( formatSeasonCell( row ) );
+			lines.push( '|' + formatSeasonCell( row ) );
 			const leaguePair = pairDisplay( row.leagueApps, row.leagueGoals );
 			if ( !cleanValue( row.leagueName ) && leaguePair.merged ) {
-				cells.push( 'colspan="3"|—' );
+				lines.push( '|colspan="3"|—' );
 			} else {
-				cells.push( formatLeagueCell( row ) );
+				lines.push( '|' + formatLeagueCell( row ) );
 				cells.push( ...( leaguePair.merged ?
 					[ `colspan="2"|${ leaguePair.text }` ] :
 					[ leaguePair.apps, leaguePair.missingGoals ?
@@ -858,7 +858,7 @@
 				totalCells.push( String( groupTotalApps ) );
 				totalCells.push( String( groupTotalGoals ) );
 			}
-			lines.push( joinedRow( '!', totalCells ) );
+			lines.push( '!' + totalCells[ 0 ], joinedRow( '!', totalCells.slice( 1 ) ) );
 		}
 
 		const ownTotals = group.rows.map( ( row ) => computeRowTotals( row ) );
@@ -935,7 +935,8 @@
 		topHeaders.push( 'colspan="2"|Total' );
 		subHeaders.push( 'Apps', 'Goals' );
 		const lines = [
-			'{| class="wikitable" style="text-align: center;"',
+			'{| class="wikitable" style="text-align:center"',
+			'|+ Appearances and goals by club, season and competition',
 			'|-',
 			...topHeaders.map( ( header ) => '!' + header ),
 			'|-',
@@ -1021,7 +1022,7 @@
 				grandCells.push( String( grandApps ) );
 				grandCells.push( String( grandGoals ) );
 			}
-			lines.push( joinedRow( '!', grandCells ) );
+			lines.push( '!' + grandCells[ 0 ], joinedRow( '!', grandCells.slice( 1 ) ) );
 		}
 
 		lines.push( '|}' );
@@ -3923,6 +3924,10 @@
 	}
 
 	function extractLeadingTableReferences( source, tableStart ) {
+		const tableEnd = source.indexOf( '\n|}', tableStart );
+		const oldTable = source.slice( tableStart, tableEnd < 0 ? source.length : tableEnd );
+		const caption = oldTable.match( /^\|\+(?:<ref\b[^>]*\/\s*>|<ref\b[^>]*>[\s\S]*?<\/ref\s*>|[^\n])*/mi );
+		const captionReferences = caption ? ( caption[ 0 ].match( /<ref\b[^>]*\/\s*>|<ref\b[^>]*>[\s\S]*?<\/ref\s*>/gi ) || [] ).join( '' ) : '';
 		const prefixLines = source.slice( 0, tableStart ).split( /\r?\n/ );
 		for ( let index = prefixLines.length - 1; index >= 0; index-- ) {
 			const line = prefixLines[ index ];
@@ -3954,11 +3959,11 @@
 			start--;
 		}
 		if ( !references.length ) {
-			return { source, references: '', tableStart: tableStart };
+			return { source, references: captionReferences, tableStart: tableStart };
 		}
 		const referenceText = references.join( '\n' ).match( /<ref\b[^>]*>(?:[\s\S]*?<\/ref>)|<ref\b[^>]*\/>/gi );
 		if ( !referenceText || !referenceText.length ) {
-			return { source, references: '', tableStart };
+			return { source, references: captionReferences, tableStart };
 		}
 		const cleanedLines = lines.slice( 0, start ).concat(
 			references.map( ( line ) => line.replace( /<ref\b[^>]*>(?:[\s\S]*?<\/ref>)|<ref\b[^>]*\/>/gi, '' ).trimEnd() ),
@@ -3967,7 +3972,7 @@
 		const cleanedSource = cleanedLines.join( '\n' );
 		return {
 			source: cleanedSource + source.slice( tableStart ),
-			references: referenceText.join( '' ),
+			references: referenceText.join( '' ) + captionReferences,
 			tableStart: cleanedSource.length
 		};
 	}
@@ -3976,9 +3981,15 @@
 		if ( !references ) {
 			return body;
 		}
+		references = Array.from( new Set( references.match( /<ref\b[^>]*\/\s*>|<ref\b[^>]*>[\s\S]*?<\/ref\s*>/gi ) || [] ) ).join( '' );
 		const updateMatch = body.match( /^(\{\{Updated\|[^\n]+\}\})\n/m );
 		if ( updateMatch ) {
 			const insertAt = updateMatch.index + updateMatch[ 1 ].length;
+			return body.slice( 0, insertAt ) + references + body.slice( insertAt );
+		}
+		const captionMatch = body.match( /^\|\+[^\n]*/m );
+		if ( captionMatch ) {
+			const insertAt = captionMatch.index + captionMatch[ 0 ].length;
 			return body.slice( 0, insertAt ) + references + body.slice( insertAt );
 		}
 		const tableIndex = body.indexOf( '{|' );
