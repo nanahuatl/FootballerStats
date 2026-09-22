@@ -510,7 +510,7 @@
 		if ( normalizeBoolean( row.isLoan ) ) {
 			return options.withArrow ? `→ ${ renderedTeam } (loan)` : `${ renderedTeam } (loan)`;
 		}
-		return renderedTeam;
+		return options.withArrow && row.clubPrefix ? `${ row.clubPrefix } ${ renderedTeam }` : renderedTeam;
 	}
 
 	function normalizeYearDashes( value ) {
@@ -1412,7 +1412,8 @@
 			team: link.label,
 			teamLink: link.target,
 			disableTeamLink: link.disableLink,
-			isLoan: !!loanPrefixMatch || hasLoanText,
+			isLoan: hasLoanText || ( !!loanPrefixMatch && !cleanValue( visibleAnnotation ) ),
+			clubPrefix: loanPrefixMatch ? '→' : '',
 			isGuest: hasGuestText,
 			reserveAnnotation: reserveMatch ? reserveMatch[ 0 ] : '',
 			clubAnnotation: cleanValue( annotation )
@@ -2281,6 +2282,7 @@
 				row.reserveAnnotation = parsedTeam.reserveAnnotation;
 				row.isGuest = parsedTeam.isGuest;
 				row.clubAnnotation = parsedTeam.clubAnnotation;
+				row.clubPrefix = parsedTeam.clubPrefix;
 			} else if ( field === 'caps' ) {
 				const stat = splitInfoboxReferences( value );
 				row.leagueApps = stripHtmlComments( stat.value ).includes( '+' ) ? '?' : stat.value;
@@ -2382,6 +2384,7 @@
 				reserveAnnotation: infoboxRow.reserveAnnotation,
 				isGuest: infoboxRow.isGuest,
 				clubAnnotation: infoboxRow.clubAnnotation,
+				clubPrefix: infoboxRow.clubPrefix,
 				infoboxSourceIndex: infoboxRow.infoboxSourceIndex,
 				clubSpellId: infoboxRow.clubSpellId,
 				infoboxOriginalSeason: infoboxRow.infoboxOriginalSeason,
@@ -2748,6 +2751,7 @@
 		data.clubSpellId = tr.tfshClubSpellId;
 		data.reserveAnnotation = cleanValue( initialData.reserveAnnotation );
 		data.clubAnnotation = clubAnnotationText( initialData, true );
+		data.clubPrefix = initialData.clubPrefix || '';
 		const statPairs = [
 			[ 'leagueApps', 'leagueGoals' ],
 			[ 'localLeagueApps', 'localLeagueGoals' ],
@@ -3220,6 +3224,7 @@
 			reserveAnnotation: base.reserveAnnotation,
 			isGuest: base.isGuest,
 			clubAnnotation: base.clubAnnotation,
+			clubPrefix: base.clubPrefix,
 			disableTeamLink: base.disableTeamLink,
 			season: nextSeasonValue( base.season ),
 			seasonSequenceHandled: base.seasonSequenceHandled,
@@ -3269,6 +3274,7 @@
 			seed.seasonSequenceHandled = sourceTr.tfshSeasonSequenceHandled;
 			seed.reserveAnnotation = sourceTr.tfshData.inputs.reserveAnnotation;
 			seed.clubAnnotation = sourceTr.tfshData.inputs.clubAnnotation;
+			seed.clubPrefix = sourceTr.tfshData.inputs.clubPrefix;
 			seed.isGuest = sourceTr.tfshIsGuest;
 			seed.competitionNotePropagationDone = { ...sourceTr.tfshCompetitionNotePropagationDone };
 			seed.teamLinkAuto = sourceTr.tfshData.inputs.teamLink.dataset.tfshAutoTeamLink === '1';
@@ -3328,6 +3334,7 @@
 				row.isGuest = tr.tfshIsGuest;
 				row.reserveAnnotation = tr.tfshData.inputs.reserveAnnotation;
 				row.clubAnnotation = tr.tfshData.inputs.clubAnnotation;
+				row.clubPrefix = tr.tfshData.inputs.clubPrefix;
 				return row;
 			} )
 			.filter( ( row ) => row.team || row.season );
@@ -4392,6 +4399,7 @@
 				isGuest: normalizeBoolean( row.isGuest ),
 				reserveAnnotation: cleanValue( row.reserveAnnotation ),
 				clubAnnotation: clubAnnotationText( row, true ),
+				clubPrefix: row.clubPrefix || '',
 				disableTeamLink: normalizeBoolean( row.disableTeamLink ),
 				seasons: [ cleanValue( row.season ) ],
 				infoboxYears: [ cleanValue( row.infoboxYear ) ],
