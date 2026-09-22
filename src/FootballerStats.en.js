@@ -2533,7 +2533,10 @@
 			if ( !missingPeriods.has( row.infoboxSourceIndex ) ) {
 				missingPeriods.set( row.infoboxSourceIndex, [] );
 			}
-			missingPeriods.get( row.infoboxSourceIndex ).push( { ...row, infoboxOnly: true } );
+			missingPeriods.get( row.infoboxSourceIndex ).push( {
+				...row,
+				infoboxOnly: !( Number( stripHtmlComments( row.leagueApps ) ) > 0 )
+			} );
 		} );
 		missingPeriods.forEach( ( missingRows, sourceIndex ) => {
 			const nextIndex = enrichedRows.findIndex(
