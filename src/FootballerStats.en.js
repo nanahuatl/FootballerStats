@@ -4248,7 +4248,8 @@
 		}
 		if ( hasNotes ) {
 			after = after.replace( /^(?:[ \t]*\r?\n)+/, '' );
-			return source.slice( 0, table.end ).trimEnd() + '\n{{Notelist}}\n\n' +
+			const separator = /^[ \t]*\{\{\s*(?:(?:Template|Şablon)\s*:\s*)?(?:Reflist|Kaynakça)(?=\s*[|}])/i.test( after ) ? '\n' : '\n\n';
+			return source.slice( 0, table.end ).trimEnd() + '\n{{Notelist}}' + separator +
 				( after.trim() ? after : '' );
 		}
 		after = after.replace( /^\s*\n/, '' );
