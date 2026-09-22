@@ -904,38 +904,39 @@
 		const sortedRows = sortRowsForCareerTable( tableRows );
 		const groups = groupRowsByTeam( orderCareerTableLoans( sortedRows ) );
 		const topHeaders = [
-			'rowspan="2" | Club',
-			'rowspan="2" | Season',
-			'colspan="3" | League'
+			'rowspan="2"|Club',
+			'rowspan="2"|Season',
+			'colspan="3"|League'
 		];
 		const subHeaders = [ 'Division', 'Apps', 'Goals' ];
 		if ( localLeagueEnabled ) {
-			topHeaders.push( 'colspan="3" | Local league' );
+			topHeaders.push( 'colspan="3"|Local league' );
 			subHeaders.push( 'Division', 'Apps', 'Goals' );
 		}
 		if ( nationalCupEnabled ) {
-			topHeaders.push( 'colspan="2" | National cup' );
+			topHeaders.push( 'colspan="2"|National cup' );
 			subHeaders.push( 'Apps', 'Goals' );
 		}
 		if ( leagueCupEnabled ) {
-			topHeaders.push( 'colspan="2" | League cup' );
+			topHeaders.push( 'colspan="2"|League cup' );
 			subHeaders.push( 'Apps', 'Goals' );
 		}
 		if ( continentalEnabled ) {
-			topHeaders.push( 'colspan="2" | Continental' );
+			topHeaders.push( 'colspan="2"|Continental' );
 			subHeaders.push( 'Apps', 'Goals' );
 		}
 		if ( otherEnabled ) {
-			topHeaders.push( `colspan="2" | ${ buildOtherHeaderText() }` );
+			topHeaders.push( `colspan="2"|${ buildOtherHeaderText() }` );
 			subHeaders.push( 'Apps', 'Goals' );
 		}
-		topHeaders.push( 'colspan="2" | Total' );
+		topHeaders.push( 'colspan="2"|Total' );
 		subHeaders.push( 'Apps', 'Goals' );
 		const lines = [
 			'{| class="wikitable" style="text-align: center;"',
-			joinedRow( '!', topHeaders ),
 			'|-',
-			joinedRow( '!', subHeaders )
+			...topHeaders.map( ( header ) => '!' + header ),
+			'|-',
+			'!' + subHeaders.join( '!!' )
 		];
 
 		let grandApps = 0;
