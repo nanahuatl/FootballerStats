@@ -583,11 +583,34 @@
 			return '—';
 		}
 		const yearNamedLeague = leagueName.match( /^(\d{4}(?:\u2013\d{2,4})?)\s+(.+)$/ );
-		const linkTarget = yearNamedLeague ?
-			leagueName : `${ normalizeSeasonText( row.season ) } ${ leagueName }`.trim();
+		const season = yearNamedLeague ? yearNamedLeague[ 1 ] : normalizeSeasonText( row.season );
 		const labelSource = yearNamedLeague ? yearNamedLeague[ 2 ] : leagueName;
-		const displayName = labelSource.replace( /\s*\([^()]+\)\s*$/, '' ).trim() || labelSource;
+		const englishLeague = englishLeagueNames( labelSource, season );
+		const linkTarget = `${ season } ${ englishLeague.target }`.trim();
+		const displayName = englishLeague.label.replace( /\s*\([^()]+\)\s*$/, '' ).trim() || englishLeague.label;
 		return buildWikiLink( linkTarget, displayName );
+	}
+
+	function englishLeagueNames( name, season ) {
+		const startYear = Number( ( season.match( /^\d{4}/ ) || [] )[ 0 ] );
+		if ( name === 'FA Premier League' ) {
+			return { target: name, label: 'Premier League' };
+		}
+		if ( name === 'Premier League' && startYear >= 1992 && startYear < 2007 ) {
+			return { target: 'FA Premier League', label: name };
+		}
+		const division = name.match( /^(?:Football League )?((?:First|Second|Third|Fourth) Division(?: (?:North|South))?)$/ );
+		if ( division ) {
+			return { target: `Football League ${ division[ 1 ] }`, label: division[ 1 ] };
+		}
+		const footballLeague = name.match( /^(?:(EFL|Football(?: League(?= Championship))?) )?(Championship|League One|League Two)$/ );
+		if ( footballLeague ) {
+			const label = footballLeague[ 2 ];
+			const historicalPrefix = label === 'Championship' ? 'Football League' : 'Football';
+			const prefix = footballLeague[ 1 ] || ( startYear < 2016 ? historicalPrefix : 'EFL' );
+			return { target: `${ prefix } ${ label }`, label };
+		}
+		return { target: name, label: name };
 	}
 
 	function activeStatPairs() {
