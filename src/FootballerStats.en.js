@@ -561,11 +561,12 @@
 
 	function formatSeasonCell( row ) {
 		const season = normalizeSeasonText( row.season );
+		const references = tableCellReferences( row, 'season' );
 		if ( normalizeBoolean( row.disableSeasonLink ) ) {
-			return escapeCell( season );
+			return escapeCell( season ) + references;
 		}
 		const seasonLink = normalizeSeasonTarget( row.seasonLink );
-		return buildWikiLink( seasonLink || defaultSeasonTarget( row ), season );
+		return buildWikiLink( seasonLink || defaultSeasonTarget( row ), season ) + references;
 	}
 
 	function formatLeagueCell( row ) {
@@ -1717,7 +1718,7 @@
 			leagueCupEnabled = true;
 		}
 		const hasNationalCup = /colspan\s*=\s*"2"\s*\|\s*(?:\[\[)?(?:(?:National\s+)?Cup\b|Coppa Italia\b|FA Cup\b)/i.test( section );
-		const hasContinental = /colspan\s*=\s*"2"\s*\|\s*Continental/i.test( section );
+		const hasContinental = /colspan\s*=\s*"2"\s*\|\s*(?:Continental|Europe)\b/i.test( section );
 		const hasOther = /colspan\s*=\s*"2"\s*\|\s*Other(?:\s+Cup)?\b/i.test( section );
 		nationalCupEnabled = hasNationalCup;
 		continentalEnabled = hasContinental;
@@ -1760,7 +1761,8 @@
 				return;
 			}
 
-			const season = parseSeasonValue( seasonCell );
+			const seasonSource = splitInfoboxReferences( seasonCell );
+			const season = parseSeasonValue( seasonSource.value );
 			rows.push( {
 				...activeTeam,
 				...season,
@@ -1777,6 +1779,9 @@
 					namedNotes
 				)
 			} );
+			if ( seasonSource.references.length ) {
+				rows[ rows.length - 1 ].tableCellRefs.season = seasonSource.references;
+			}
 			remainingTeamRows -= 1;
 			if ( remainingTeamRows <= 0 ) {
 				activeTeam = null;
