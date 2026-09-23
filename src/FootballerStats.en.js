@@ -2996,6 +2996,14 @@
 
 	function removeSeasonRow( tr ) {
 		const rows = Array.from( tbody.querySelectorAll( 'tr' ) );
+		if ( rows.length === 1 ) {
+			// Build the replacement before removing the last editable row.
+			createRow();
+			tr.remove();
+			refreshPreview();
+			tbody.lastElementChild.tfshData.inputs.team.focus();
+			return;
+		}
 		const index = rows.indexOf( tr );
 		const previous = rows[ index - 1 ];
 		const next = rows[ index + 1 ];
@@ -3014,9 +3022,6 @@
 			previous.tfshInfoboxYearEdited = previous.tfshInfoboxYearEdited || tr.tfshInfoboxYearEdited;
 		}
 		tr.remove();
-		if ( !tbody.querySelectorAll( 'tr' ).length ) {
-			createRow();
-		}
 		refreshPreview();
 	}
 
