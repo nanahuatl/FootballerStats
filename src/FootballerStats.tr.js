@@ -446,7 +446,8 @@
 	}
 
 	function escapeCell( value ) {
-		return cleanValue( value ).replace( /\|/g, '{{!}}' );
+		return cleanValue( value ).split( /(<ref\b[^>]*\/\s*>|<ref\b[^>]*>[\s\S]*?<\/ref\s*>)/gi )
+			.map( ( part, index ) => index % 2 ? part : part.replace( /\|/g, '{{!}}' ) ).join( '' );
 	}
 
 	function normalizeBoolean( value ) {
@@ -638,8 +639,8 @@
 	}
 
 	function joinedRow( marker, cells ) {
-		const separator = ` ${ marker }${ marker } `;
-		return `${ marker } ${ cells.join( separator ) }`;
+		const separator = `${ marker }${ marker }`;
+		return `${ marker }${ cells.join( separator ) }`;
 	}
 
 	function groupRowsByTeam( rows ) {
@@ -741,30 +742,33 @@
 			const cells = [];
 			lines.push( '|-' );
 			if ( index === 0 ) {
-				cells.push( `rowspan="${ rowSpan }" | ${ formatTeamCell( representative ) }` );
+				lines.push( '|' + ( rowSpan > 1 ?
+					`rowspan="${ rowSpan }"|${ formatTeamCell( representative ) }` :
+					formatTeamCell( representative ) ) );
 			}
-			cells.push( formatSeasonCell( row ) );
-			const leaguePair = pairDisplay( row.leagueApps, row.leagueGoals );
+			lines.push( '|' + formatSeasonCell( row ) );
+			const leaguePair = tableStatPair( row, 'leagueApps', 'leagueGoals' );
 			if ( !cleanValue( row.leagueName ) && leaguePair.merged ) {
-				cells.push( 'colspan="3" | -' );
+				lines.push( '|colspan="3"|' + leaguePair.text + tableCellReferences( row, 'leagueName' ) );
 			} else {
-				cells.push( formatLeagueCell( row ) );
+				const leagueCell = formatLeagueCell( row );
+				lines.push( '|' + ( leagueCell === '-' ? 'style=""|-' : leagueCell ) + tableCellReferences( row, 'leagueName' ) );
 				cells.push( ...( leaguePair.merged ?
-					[ `colspan="2" | ${ leaguePair.text }` ] :
+					[ `colspan="2"|${ leaguePair.text }` ] :
 					[ leaguePair.apps, leaguePair.missingGoals ?
-						`style="background:#fdd; color:#900" | ${ leaguePair.goals }` : leaguePair.goals ] ) );
+						`style="background:#fdd; color:#900"|${ leaguePair.goals }` : leaguePair.goals ] ) );
 			}
 			const competitionPairs = [];
 			if ( localLeagueEnabled ) {
-				const localLeaguePair = pairDisplay( row.localLeagueApps, row.localLeagueGoals );
+				const localLeaguePair = tableStatPair( row, 'localLeagueApps', 'localLeagueGoals' );
 				if ( !cleanValue( row.localLeagueName ) && localLeaguePair.merged ) {
-					cells.push( 'colspan="3" | -' );
+					cells.push( 'colspan="3"|' + localLeaguePair.text + tableCellReferences( row, 'localLeagueName' ) );
 				} else {
-					cells.push( formatLocalLeagueCell( row ) );
+					cells.push( formatLocalLeagueCell( row ) + tableCellReferences( row, 'localLeagueName' ) );
 					cells.push( ...( localLeaguePair.merged ?
-						[ `colspan="2" | ${ localLeaguePair.text }` ] :
+						[ `colspan="2"|${ localLeaguePair.text }` ] :
 						[ localLeaguePair.apps, localLeaguePair.missingGoals ?
-							`style="background:#fdd; color:#900" | ${ localLeaguePair.goals }` : localLeaguePair.goals ] ) );
+							`style="background:#fdd; color:#900"|${ localLeaguePair.goals }` : localLeaguePair.goals ] ) );
 				}
 			}
 			if ( nationalCupEnabled ) {
@@ -781,11 +785,11 @@
 			}
 			competitionPairs.forEach( ( pair ) => {
 				if ( pair.merged ) {
-					cells.push( `colspan="2" | ${ pair.text }${ pair.note }` );
+					cells.push( `colspan="2"|${ pair.text }${ pair.note }` );
 				} else {
 					cells.push( pair.apps + pair.note );
 					cells.push( pair.missingGoals ?
-						`style="background:#fdd; color:#900" | ${ pair.goals }` : pair.goals );
+						`style="background:#fdd; color:#900"|${ pair.goals }` : pair.goals );
 				}
 			} );
 			if ( rowTotal.unknown ) {
@@ -795,13 +799,15 @@
 				cells.push( String( rowTotal.apps ) );
 				cells.push( String( rowTotal.goals ) );
 			}
+			cells[ cells.length - 2 ] += tableCellReferences( row, 'totalApps' );
+			cells[ cells.length - 1 ] += tableCellReferences( row, 'totalGoals' );
 			lines.push( joinedRow( '|', cells ) );
 		} );
 
 		if ( totalRows.length > 1 ) {
 			lines.push( '|-' );
 			const totalCells = [
-				'colspan="2" | Toplam',
+				'colspan="2"|Toplam',
 				groupLeagueApps.unknown ? '?' : String( groupLeagueApps.total ),
 				groupLeagueGoals.unknown ? '?' : String( groupLeagueGoals.total )
 			];
@@ -839,7 +845,7 @@
 				totalCells.push( String( groupTotalApps ) );
 				totalCells.push( String( groupTotalGoals ) );
 			}
-			lines.push( joinedRow( '!', totalCells ) );
+			lines.push( '!' + totalCells[ 0 ], joinedRow( '!', totalCells.slice( 1 ) ) );
 		}
 
 		const ownTotals = group.rows.map( ( row ) => computeRowTotals( row ) );
@@ -916,7 +922,7 @@
 		topHeaders.push( 'colspan="2"|Toplam' );
 		subHeaders.push( 'Maç', 'Gol' );
 		const lines = [
-			'{| class="wikitable" style="text-align: center;"',
+			'{| class="wikitable" style="text-align:center"',
 			'|-',
 			...topHeaders.map( ( header ) => '!' + header ),
 			'|-',
@@ -964,7 +970,7 @@
 		if ( groups.length > 1 ) {
 			lines.push( '|-' );
 			const grandCells = [
-				'colspan="3" | Kariyer toplamı',
+				'colspan="3"|Kariyer toplamı',
 				grandLeagueApps.unknown ? '?' : String( grandLeagueApps.total ),
 				grandLeagueGoals.unknown ? '?' : String( grandLeagueGoals.total )
 			];
@@ -1002,7 +1008,7 @@
 				grandCells.push( String( grandApps ) );
 				grandCells.push( String( grandGoals ) );
 			}
-			lines.push( joinedRow( '!', grandCells ) );
+			lines.push( '!' + grandCells[ 0 ], joinedRow( '!', grandCells.slice( 1 ) ) );
 		}
 
 		lines.push( '|}' );
@@ -1202,8 +1208,20 @@
 		return true;
 	}
 
-	function competitionPair( row, appsKey, goalsKey, noteNames ) {
+	function tableCellReferences( row, key ) {
+		return ( row.tableCellRefs && row.tableCellRefs[ key ] || [] ).join( '' );
+	}
+
+	function tableStatPair( row, appsKey, goalsKey ) {
 		const pair = pairDisplay( row[ appsKey ], row[ goalsKey ] );
+		const appsRefs = tableCellReferences( row, appsKey );
+		const goalsRefs = tableCellReferences( row, goalsKey );
+		return pair.merged ? { ...pair, text: pair.text + appsRefs + goalsRefs } :
+			{ ...pair, apps: pair.apps + appsRefs, goals: pair.goals + goalsRefs };
+	}
+
+	function competitionPair( row, appsKey, goalsKey, noteNames ) {
+		const pair = tableStatPair( row, appsKey, goalsKey );
 		if ( pair.merged ) {
 			return { ...pair, note: '' };
 		}
@@ -1284,9 +1302,9 @@
 
 	function extractCellContent( cellText ) {
 		const cell = cleanValue( cellText ).replace( /\{\{!\}\}/g, '|' );
-		const attrIndex = cell.indexOf( ' | ' );
-		if ( attrIndex !== -1 && !cell.startsWith( '[[' ) ) {
-			return cleanValue( cell.slice( attrIndex + 3 ) );
+		const attrIndex = cell.indexOf( '|' );
+		if ( attrIndex !== -1 && /^(?:rowspan|colspan|style|class|align|valign|width|height|scope)\s*=/i.test( cell ) ) {
+			return cleanValue( cell.slice( attrIndex + 1 ) );
 		}
 		return cell;
 	}
@@ -1441,9 +1459,17 @@
 			otherApps: '',
 			otherGoals: ''
 		};
+		values.tableCellRefs = {};
+		const readCell = ( key, index ) => {
+			const parsed = splitInfoboxReferences( cells[ index ] || '' );
+			if ( parsed.references.length ) {
+				values.tableCellRefs[ key ] = parsed.references;
+			}
+			return parsed.value;
+		};
 		let cursor = startIndex;
 		const readLeagueName = ( key ) => {
-			const rawLeagueCell = cleanValue( cells[ cursor ] || '' );
+			const rawLeagueCell = readCell( key, cursor );
 			const spansStatistics = /^colspan\s*=\s*["']?3["']?\s*\|/i.test( rawLeagueCell );
 			const leagueCell = extractCellContent( rawLeagueCell );
 			if ( leagueCell && leagueCell !== '-' ) {
@@ -1464,9 +1490,10 @@
 		};
 		values.competitionNotes = {};
 		const readPair = ( appsKey, goalsKey ) => {
+			const rawValue = readCell( appsKey, cursor );
 			const parsed = COMPETITION_NOTE_LABELS[ appsKey ] ?
-				splitCompetitionNote( cleanValue( cells[ cursor ] || '' ), namedNotes ) :
-				{ value: cleanValue( cells[ cursor ] || '' ), note: '' };
+				splitCompetitionNote( rawValue, namedNotes ) :
+				{ value: rawValue, note: '' };
 			const current = cleanValue( parsed.value );
 			if ( parsed.note ) {
 				values.competitionNotes[ appsKey ] = parsed.note;
@@ -1475,8 +1502,8 @@
 				cursor += 1;
 				return;
 			}
-			values[ appsKey ] = current;
-			values[ goalsKey ] = cleanValue( cells[ cursor + 1 ] || '' );
+			values[ appsKey ] = extractCellContent( current );
+			values[ goalsKey ] = extractCellContent( readCell( goalsKey, cursor + 1 ) );
 			cursor += 2;
 		};
 
@@ -1505,6 +1532,8 @@
 			readPair( 'otherApps', 'otherGoals' );
 		}
 
+		readCell( 'totalApps', cursor );
+		readCell( 'totalGoals', cursor + 1 );
 		return values;
 	}
 
@@ -1520,6 +1549,65 @@
 			/gol(?:ler)?/.test( headerText );
 	}
 
+	function careerTableRows( section ) {
+		const protectedValues = [];
+		const protect = ( value ) => {
+			protectedValues.push( value );
+			return '\uE000' + ( protectedValues.length - 1 ) + '\uE001';
+		};
+		let masked = section.replace( /<ref\b[^>]*\/\s*>|<ref\b[^>]*>[\s\S]*?<\/ref\s*>|<!--[\s\S]*?-->|<nowik[i]\b[^>]*>[\s\S]*?<\/nowik[i]\s*>/gi, protect );
+		let depth = 0;
+		let start = 0;
+		let result = '';
+		let last = 0;
+		for ( let i = 0; i < masked.length - 1; i += 1 ) {
+			const pair = masked.slice( i, i + 2 );
+			if ( pair === '{{' ) {
+				if ( depth === 0 ) {
+					start = i;
+				}
+				depth += 1;
+				i += 1;
+			} else if ( pair === '}}' && depth ) {
+				depth -= 1;
+				i += 1;
+				if ( depth === 0 ) {
+					result += masked.slice( last, start ) + protect( masked.slice( start, i + 1 ) );
+					last = i + 1;
+				}
+			}
+		}
+		masked = result + masked.slice( last );
+		const restore = ( value ) => value.replace( /\uE000(\d+)\uE001/g,
+			( match, index ) => restore( protectedValues[ Number( index ) ] ) );
+		const rows = [];
+		let current = '';
+		const flush = () => {
+			if ( current ) {
+				rows.push( current );
+			}
+			current = '';
+		};
+		masked.split( /\r?\n/ ).forEach( ( line ) => {
+			const trimmed = line.trim();
+			if ( /^\|[-}]/.test( trimmed ) ) {
+				flush();
+			} else if ( /^[!|]/.test( trimmed ) && !trimmed.startsWith( '|+' ) ) {
+				if ( current && current[ 0 ] !== trimmed[ 0 ] ) {
+					flush();
+				}
+				current += current ? trimmed[ 0 ] + trimmed : trimmed;
+			} else if ( current ) {
+				current += '\n' + line;
+			}
+		} );
+		flush();
+		return rows.map( ( row ) => ( {
+			header: row.startsWith( '!' ),
+			cells: row.slice( 1 ).split( row.startsWith( '!' ) ? /\s*!!\s*/ : /\s*\|\|\s*/ ).map( restore )
+		} ) );
+	}
+
 	function parseRowsFromCareerSection( source ) {
 		const sourceText = source || '';
 		const tableRange = findWikitableRanges( sourceText ).find(
@@ -1533,7 +1621,7 @@
 
 		const otherNoteMatch = section.match( /Diğer\s*\{\{adn\|(.+?) maçlarını içerir\.\}\}/i );
 		const parsedOtherNote = cleanValue( otherNoteMatch ? otherNoteMatch[ 1 ] : '' );
-		const lines = section.split( /\r?\n/ );
+		const tableRows = careerTableRows( section );
 		const hasLeagueName = /colspan\s*=\s*"3"\s*\|\s*Lig/i.test( section );
 		const hasLocalLeague = /colspan\s*=\s*"3"\s*\|\s*Yerel lig/i.test( section );
 		if ( hasLocalLeague ) {
@@ -1551,14 +1639,15 @@
 		otherEnabled = hasOther;
 		const rows = [];
 		let activeTeam = null;
+		let remainingTeamRows = 0;
 
-		lines.forEach( ( line ) => {
-			const trimmed = line.trim();
-			if ( !trimmed.startsWith( '| ' ) || /^!\s/.test( trimmed ) ) {
+		tableRows.forEach( ( tableRow ) => {
+			if ( tableRow.header ) {
+				activeTeam = null;
 				return;
 			}
+			const rawCells = tableRow.cells;
 
-			const rawCells = trimmed.replace( /^\|\s*/, '' ).split( /\s\|\|\s/ );
 			if ( !rawCells.length ) {
 				return;
 			}
@@ -1570,15 +1659,15 @@
 			let seasonCellIndex = 0;
 			let statStartIndex = 1;
 			const firstCell = cleanValue( rawCells[ 0 ] );
-			if ( /^rowspan\s*=/i.test( firstCell ) ) {
+			if ( /^rowspan\s*=/i.test( firstCell ) || !activeTeam ) {
+				const span = firstCell.match( /^rowspan\s*=\s*["']?(\d+)/i );
+				remainingTeamRows = span ? Number( span[ 1 ] ) : 1;
 				activeTeam = {
 					...parseTeamValue( extractCellContent( firstCell ) ),
 					clubSpellId: `table:${ rows.length }`
 				};
 				seasonCellIndex = 1;
 				statStartIndex = 2;
-			} else if ( !activeTeam ) {
-				return;
 			}
 
 			const seasonCell = extractCellContent( rawCells[ seasonCellIndex ] || '' );
@@ -1603,6 +1692,10 @@
 					namedNotes
 				)
 			} );
+			remainingTeamRows -= 1;
+			if ( remainingTeamRows <= 0 ) {
+				activeTeam = null;
+			}
 		} );
 
 		if ( parsedOtherNote ) {
@@ -2329,6 +2422,17 @@
 			byTeamAndSeason.get( key ).push( row );
 		} );
 
+		// Older tables often omit the loan/reserve suffix found in the infobox.
+		const matchesIdentity = ( candidate, row ) => {
+			if ( rowTeamIdentityKey( candidate ) === rowTeamIdentityKey( row ) ) {
+				return true;
+			}
+			if ( normalizeBoolean( row.isLoan ) || clubAnnotationText( row ) ) {
+				return false;
+			}
+			return rowTeamIdentityKey( { ...candidate, isLoan: false,
+				reserveAnnotation: '', clubAnnotation: '', isGuest: false } ) === rowTeamIdentityKey( row );
+		};
 		const assignedReferences = new Set();
 		const enrichedRows = rows.map( ( row ) => {
 			const bounds = seasonBounds( row.season );
@@ -2350,7 +2454,7 @@
 						Number.isFinite( periodEnd ) &&
 						rowStart >= periodStart &&
 						( sameCalendarYear ? rowEnd <= periodEnd : rowStart <= periodEnd );
-					if ( rowTeamIdentityKey( candidate ) === rowTeamIdentityKey( row ) && withinPeriod ) {
+					if ( matchesIdentity( candidate, row ) && withinPeriod ) {
 						if ( !matchingPeriods.has( candidate.infoboxSourceIndex ) ) {
 							matchingPeriods.set( candidate.infoboxSourceIndex, candidate );
 						}
@@ -2363,7 +2467,7 @@
 			if ( !infoboxRow ) {
 				const clubPeriods = new Map();
 				infoboxRows.forEach( ( candidate ) => {
-					if ( rowTeamIdentityKey( candidate ) === rowTeamIdentityKey( row ) ) {
+					if ( matchesIdentity( candidate, row ) ) {
 						clubPeriods.set( candidate.infoboxSourceIndex, candidate );
 					}
 				} );
@@ -2382,6 +2486,7 @@
 			return {
 				...row,
 				infoboxYear: infoboxRow.infoboxYear,
+				isLoan: infoboxRow.isLoan,
 				reserveAnnotation: infoboxRow.reserveAnnotation,
 				isGuest: infoboxRow.isGuest,
 				clubAnnotation: infoboxRow.clubAnnotation,
@@ -2521,6 +2626,7 @@
 			Object.keys( initialData ).length === 0 : normalizeBoolean( initialData.infoboxYearPending );
 		usedClubSpellIds.add( tr.tfshClubSpellId );
 		tr.tfshInfoboxStatRefs = initialData.infoboxStatRefs || {};
+		tr.tfshTableCellRefs = { ...initialData.tableCellRefs };
 		tr.tfshCompetitionNotes = { ... initialData.competitionNotes };
 		tr.tfshCompetitionNoteButtons = {};
 		tr.tfshCompetitionNotePropagationDone = { ... initialData.competitionNotePropagationDone };
@@ -2811,6 +2917,9 @@
 			previous.tfshInfoboxYearEdited = previous.tfshInfoboxYearEdited || tr.tfshInfoboxYearEdited;
 		}
 		tr.remove();
+		if ( !tbody.querySelectorAll( 'tr' ).length ) {
+			createRow();
+		}
 		refreshPreview();
 	}
 
@@ -3326,6 +3435,7 @@
 				row.clubSpellId = tr.tfshClubSpellId;
 				row.infoboxOriginalSeason = tr.tfshInfoboxOriginalSeason || '';
 				row.infoboxStatRefs = tr.tfshInfoboxStatRefs || {};
+				row.tableCellRefs = { ...tr.tfshTableCellRefs };
 				updateCompetitionNoteValidity( tr );
 				row.competitionNotes = { ...tr.tfshCompetitionNotes };
 				row.competitionNotePropagationDone = { ...tr.tfshCompetitionNotePropagationDone };
@@ -4095,7 +4205,8 @@
 		}
 		if ( hasNotes ) {
 			after = after.replace( /^(?:[ \t]*\r?\n)+/, '' );
-			return source.slice( 0, table.end ).trimEnd() + '\n{{Not listesi}}\n\n' +
+			const separator = /^[ \t]*\{\{\s*(?:(?:Template|Şablon)\s*:\s*)?(?:Reflist|Kaynakça)(?=\s*[|}])/i.test( after ) ? '\n' : '\n\n';
+			return source.slice( 0, table.end ).trimEnd() + '\n{{Not listesi}}' + separator +
 				( after.trim() ? after : '' );
 		}
 		return source.slice( 0, table.end ).trimEnd() + ( after ? '\n' + after : '\n' );
