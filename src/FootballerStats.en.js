@@ -835,12 +835,13 @@
 			const totalCells = [ 'colspan="2"|Total' ];
 			activeStatPairs().forEach( ( [ appsKey, goalsKey ] ) => {
 				if ( appsKey === 'localLeagueApps' ) {
-					totalCells.push( '?' );
+					totalCells.push( '\u2014' );
 				}
-				const allDashes = totalRows.every( ( row ) =>
-					[ appsKey, goalsKey ].every( ( key ) => /^[-???]?$/.test( cleanValue( row[ key ] ) ) ) );
+				const allDashes = totalRows.every( ( row ) => (
+					[ appsKey, goalsKey ].every( ( key ) => /^[-\u2013\u2014\u2212]?$/.test( cleanValue( row[ key ] ) ) )
+				) );
 				if ( allDashes ) {
-					totalCells.push( 'colspan="2"|?' );
+					totalCells.push( 'colspan="2"|\u2014' );
 				} else {
 					[ appsKey, goalsKey ].forEach( ( key ) => {
 						const sum = sumColumnWithUnknown( totalRows, key );
