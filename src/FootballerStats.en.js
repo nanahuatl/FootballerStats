@@ -2508,6 +2508,10 @@
 
 		// Older tables often omit the loan/reserve suffix found in the infobox.
 		const matchesIdentity = ( candidate, row ) => {
+			// A table may intentionally omit the link for a repeated club.
+			if ( normalizeBoolean( row.disableTeamLink ) && !cleanValue( row.teamLink ) ) {
+				candidate = { ...candidate, teamLink: '', disableTeamLink: true };
+			}
 			if ( rowTeamIdentityKey( candidate ) === rowTeamIdentityKey( row ) ) {
 				return true;
 			}
@@ -2536,7 +2540,7 @@
 						Number.isFinite( rowEnd ) &&
 						Number.isFinite( periodStart ) &&
 						Number.isFinite( periodEnd ) &&
-						rowStart >= periodStart &&
+						rowEnd >= periodStart &&
 						( sameCalendarYear ? rowEnd <= periodEnd : rowStart <= periodEnd );
 					if ( matchesIdentity( candidate, row ) && withinPeriod ) {
 						if ( !matchingPeriods.has( candidate.infoboxSourceIndex ) ) {
