@@ -1362,10 +1362,37 @@
 	function extractCellContent( cellText ) {
 		const cell = cleanValue( cellText ).replace( /\{\{!\}\}/g, '|' );
 		const attrIndex = cell.indexOf( '|' );
-		if ( attrIndex !== -1 && /^(?:rowspan|colspan|style|class|align|valign|width|height|scope)\s*=/i.test( cell ) ) {
+		if ( attrIndex !== -1 && /^(?:rowspan|colspan|style|class|id|align|valign|width|height|scope|data-[\w-]+)\s*=/i.test( cell ) ) {
 			return cleanValue( cell.slice( attrIndex + 1 ) );
 		}
 		return cell;
+	}
+
+	function tableCellSpan( cellText, name ) {
+		const cell = stripHtmlComments( cellText );
+		if ( extractCellContent( cell ) === cell ) {
+			return 1;
+		}
+		const attributes = cell.slice( 0, cell.indexOf( '|' ) );
+		const pattern = /([\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s]+))/g;
+		let match;
+		while ( ( match = pattern.exec( attributes ) ) ) {
+			if ( match[ 1 ].toLowerCase() === name ) {
+				const value = cleanValue( match[ 2 ] ?? match[ 3 ] ?? match[ 4 ] );
+				return /^\d+$/.test( value ) ? Number( value ) : 1;
+			}
+		}
+		return 1;
+	}
+
+	function careerTableHeaders( section ) {
+		return careerTableRows( section ).filter( ( row ) => row.header )
+			.flatMap( ( row ) => row.cells ).map( ( cell ) => ( {
+				span: tableCellSpan( cell, 'colspan' ),
+				text: extractCellContent( stripHtmlComments( cell ) )
+					.replace( /\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g, ( match, target, label ) => label || target )
+					.replace( /\s+/g, ' ' ).trim()
+			} ) );
 	}
 
 	function parseWikiLinkValue( value ) {
@@ -1529,7 +1556,7 @@
 		let cursor = startIndex;
 		const readLeagueName = ( key ) => {
 			const rawLeagueCell = readCell( key, cursor );
-			const spansStatistics = /^colspan\s*=\s*["']?3["']?\s*\|/i.test( rawLeagueCell );
+			const spansStatistics = tableCellSpan( rawLeagueCell, 'colspan' ) === 3;
 			const leagueCell = extractCellContent( rawLeagueCell );
 			if ( leagueCell && !/^[-–—−]$/.test( leagueCell ) ) {
 				const parsedLeague = parseWikiLinkValue( leagueCell );
@@ -1553,7 +1580,7 @@
 			if ( parsed.note ) {
 				values.competitionNotes[ appsKey ] = parsed.note;
 			}
-			if ( !current || /^colspan\s*=\s*"2"/i.test( current ) || /^[-–—−]$/.test( current ) ) {
+			if ( !current || tableCellSpan( current, 'colspan' ) === 2 || /^[-–—−]$/.test( current ) ) {
 				cursor += 1;
 				return;
 			}
@@ -1593,13 +1620,15 @@
 	}
 
 	function isFootballerStatsTable( tableText ) {
-		const headerText = tableText.split( /\r?\n/ )
-			.filter( ( line ) => /^\s*!/.test( line ) )
-			.join( ' ' )
+		const headers = careerTableHeaders( tableText );
+		const headerText = headers.map( ( header ) => header.text ).join( ' ' )
 			.toLocaleLowerCase( 'en-GB' );
 		return /\bclub\b/.test( headerText ) &&
 			/\bseason\b/.test( headerText ) &&
-			/colspan\s*=\s*"3"\s*\|\s*league\b/.test( headerText ) &&
+			headers.length >= 3 &&
+			/^Club\b/i.test( headers[ 0 ].text ) &&
+			/^Season\b/i.test( headers[ 1 ].text ) &&
+			[ 2, 3 ].includes( headers[ 2 ].span ) &&
 			/apps|appearances/.test( headerText ) &&
 			/goals/.test( headerText );
 	}
@@ -1677,18 +1706,22 @@
 		const otherNoteMatch = section.match( /Other(?:\\s+Cup)?\\s*\\{\\{efn\\|Appearances in (.+?)\\.\\}\\}/i );
 		const parsedOtherNote = cleanValue( otherNoteMatch ? otherNoteMatch[ 1 ] : '' );
 		const tableRows = careerTableRows( section );
-		const hasLeagueName = /colspan\s*=\s*"3"\s*\|\s*League/i.test( section );
-		const hasLocalLeague = /colspan\s*=\s*"3"\s*\|\s*Local league/i.test( section );
+		const headers = careerTableHeaders( section );
+		const hasHeader = ( span, pattern ) => headers.slice( 3 ).some( ( header ) => (
+			header.span === span && pattern.test( header.text )
+		) );
+		const hasLeagueName = headers[ 2 ].span === 3;
+		const hasLocalLeague = hasHeader( 3, /^Local league\b/i );
 		if ( hasLocalLeague ) {
 			localLeagueEnabled = true;
 		}
-		const hasLeagueCup = /colspan\s*=\s*"2"\s*\|\s*League cup/i.test( section );
+		const hasLeagueCup = hasHeader( 2, /^(?:League cup|EFL Cup)\b/i );
 		if ( hasLeagueCup ) {
 			leagueCupEnabled = true;
 		}
-		const hasNationalCup = /colspan\s*=\s*"2"\s*\|\s*(?:\[\[)?(?:(?:National\s+)?Cup\b|Coppa Italia\b|FA Cup\b)/i.test( section );
-		const hasContinental = /colspan\s*=\s*"2"\s*\|\s*(?:Continental|Europe)\b/i.test( section );
-		const hasOther = /colspan\s*=\s*"2"\s*\|\s*Other(?:\s+Cup)?\b/i.test( section );
+		const hasNationalCup = hasHeader( 2, /^(?:(?:National )?Cup|Coppa Italia|FA Cup)\b/i );
+		const hasContinental = hasHeader( 2, /^(?:Continental|Europe)\b/i );
+		const hasOther = hasHeader( 2, /^Other(?: Cup)?\b/i );
 		nationalCupEnabled = hasNationalCup;
 		continentalEnabled = hasContinental;
 		otherEnabled = hasOther;
@@ -1707,16 +1740,16 @@
 				return;
 			}
 
-			if ( /^colspan\s*=\s*"2"\s*\|\s*Total$/i.test( rawCells[ 0 ] ) || /^Total$/i.test( extractCellContent( rawCells[ 0 ] ) ) ) {
+			if ( /^Total$/i.test( extractCellContent( rawCells[ 0 ] ) ) ) {
 				return;
 			}
 
 			let seasonCellIndex = 0;
 			let statStartIndex = 1;
 			const firstCell = cleanValue( rawCells[ 0 ] );
-			if ( /^rowspan\s*=/i.test( firstCell ) || !activeTeam ) {
-				const span = firstCell.match( /^rowspan\s*=\s*["']?(\d+)/i );
-				remainingTeamRows = span ? Number( span[ 1 ] ) : 1;
+			const teamSpan = tableCellSpan( firstCell, 'rowspan' );
+			if ( teamSpan > 1 || !activeTeam ) {
+				remainingTeamRows = teamSpan;
 				activeTeam = {
 					...parseTeamValue( extractCellContent( firstCell ) ),
 					clubSpellId: `table:${ rows.length }`
@@ -4722,6 +4755,7 @@
 		} );
 
 		const originalParameters = topLevelTemplateParameters( originalInfoboxText );
+		const careerActive = rowsHaveOpenEndedClubYear( rows );
 		[ [ 'totalcaps', 'apps', 'appsUnknown' ], [ 'totalgoals', 'goals', 'goalsUnknown' ] ]
 			.forEach( ( [ name, field, unknown ] ) => {
 				const total = infoboxRows.some( ( row ) => row[ unknown ] ) ? '?' :
@@ -4729,6 +4763,9 @@
 				const original = originalParameters.find( ( parameter ) => (
 					cleanValue( parameter.name ).toLowerCase() === name
 				) );
+				if ( careerActive && !original ) {
+					return;
+				}
 				const annotations = original ? ( original.value.match(
 					/__TFS_REFERENCE_\d+__|<!--[\s\S]*?-->/g
 				) || [] ).join( '' ) : '';
