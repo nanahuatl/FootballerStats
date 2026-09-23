@@ -3014,6 +3014,9 @@
 			previous.tfshInfoboxYearEdited = previous.tfshInfoboxYearEdited || tr.tfshInfoboxYearEdited;
 		}
 		tr.remove();
+		if ( !tbody.querySelectorAll( 'tr' ).length ) {
+			createRow();
+		}
 		refreshPreview();
 	}
 
