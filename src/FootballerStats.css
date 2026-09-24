@@ -1,10 +1,7 @@
 /* FootballerStats styles | CC BY-SA 3.0 */
-.tfsh-header-note-btn {
-  margin-left: 4px;
-  vertical-align: middle;
-}
 .tfsh-header-note-help {
   display: none;
+  white-space: pre-line;
 }
 .tfsh-header-note-mode .tfsh-header-note-help {
   display: block;
@@ -943,4 +940,26 @@
 .tfsh-note-dialog .tfsh-note-dialog-content > .tfsh-note-preview {
   margin-top: 16px;
   overflow-wrap: anywhere;
+}
+
+.tfsh-table th.tfsh-header-note-heading {
+  position: relative;
+}
+.tfsh-table .tfsh-header-note-heading > span {
+  display: block;
+  width: calc(100% - 16px);
+  text-align: center;
+}
+.tfsh-modal .tfsh-table .tfsh-header-note-btn,
+.tfsh-modal .tfsh-table .tfsh-header-note-btn:hover,
+.tfsh-modal .tfsh-table .tfsh-header-note-btn:active {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  margin: 0;
+  transform: translateY(-50%);
+}
+.tfsh-modal .tfsh-competition-note-btn.tfsh-header-note-locked:disabled {
+  opacity: 1;
+  cursor: default;
 }
