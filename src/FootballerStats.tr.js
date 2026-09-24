@@ -1098,6 +1098,7 @@
 		const element = document.createElement( 'tr' );
 		element.className = 'tfsh-note-entry';
 		const name = document.createElement( 'input' );
+		name.addEventListener( 'input', () => name.setCustomValidity( '' ) );
 		name.type = 'text';
 		name.className = 'tfsh-note-dialog-input';
 		name.placeholder = 'Müsabaka';
@@ -3549,6 +3550,7 @@
 
 	function refreshPreview() {
 		const rows = getRowsFromUI();
+		updateCupHeaderLabels( rows );
 		syncUpdateDate( rowsHaveOpenEndedClubYear( rows ) );
 		mw.storage.set( getRowsStorageKey(), JSON.stringify( rows ) );
 		mw.storage.set( getOtherNoteStorageKey(), otherNote );
@@ -3707,6 +3709,7 @@
 		}
 		const dialogBackdrop = backdrop.querySelector( '.tfsh-note-dialog-backdrop' );
 		const content = dialogBackdrop.querySelector( '.tfsh-note-dialog-content' );
+		content.classList.remove( 'tfsh-header-note-mode' );
 		activeNoteEditor = { row, key, button, entries: [], originalNote: row.tfshCompetitionNotes[ key ] || '' };
 		backdrop.querySelector( '.tfsh-note-entries' ).textContent = '';
 		parseCompetitionEntries( activeNoteEditor.originalNote ).forEach( addCompetitionEntry );
@@ -3716,6 +3719,46 @@
 		jQuery( content ).dialog( 'option', 'title', title ).dialog( 'open' );
 		activeNoteEditor.entries[ 0 ].name.focus();
 		activeNoteEditor.entries[ 0 ].name.select();
+	}
+
+	function editCupHeaderNote( event, key, button ) {
+		event.preventDefault();
+		event.stopPropagation();
+		if ( button.disabled ) {
+			return;
+		}
+		const rows = getRowsFromUI().filter( ( row ) => !row.infoboxOnly );
+		const header = sharedCupHeader( rows, key, '' );
+		const originalNote = header.includes( 'data-tfsh-competition' ) ? extractCellContent( header ) : '';
+		const dialogBackdrop = backdrop.querySelector( '.tfsh-note-dialog-backdrop' );
+		const content = dialogBackdrop.querySelector( '.tfsh-note-dialog-content' );
+		content.classList.add( 'tfsh-header-note-mode' );
+		activeNoteEditor = { key, button, headerNote: true, entries: [], originalNote };
+		backdrop.querySelector( '.tfsh-note-entries' ).textContent = '';
+		addCompetitionEntry( parseCompetitionEntries( originalNote )[ 0 ] );
+		activeNoteEditor.originalEntries = JSON.stringify( readCompetitionEntries() );
+		dialogBackdrop.classList.add( 'is-open' );
+		jQuery( content ).dialog( 'option', 'title', COMPETITION_NOTE_LABELS[ key ] + ' başlığı' ).dialog( 'open' );
+		activeNoteEditor.entries[ 0 ].name.focus();
+		activeNoteEditor.entries[ 0 ].name.select();
+	}
+
+	function updateCupHeaderLabels( rows ) {
+		if ( !backdrop ) {
+			return;
+		}
+		[ [ 'cupApps', 'national-cup' ], [ 'leagueCupApps', 'league-cup' ] ].forEach( ( [ key, column ] ) => {
+			const label = backdrop.querySelector( `.tfsh-${ column }-label` );
+			if ( !label ) {
+				return;
+			}
+			const header = sharedCupHeader(
+				rows.filter( ( row ) => !row.infoboxOnly ), key, COMPETITION_NOTE_LABELS[ key ]
+			);
+			label.textContent = parseWikiLinkValue( extractCellContent( header ) ).label;
+			const button = backdrop.querySelector( `[data-tfsh-header-note="${ key }"]` );
+			button.classList.toggle( 'has-note', header.includes( 'data-tfsh-competition' ) );
+		} );
 	}
 
 	function setCompetitionNoteValue( row, key, note ) {
@@ -3751,6 +3794,21 @@
 		const entries = readCompetitionEntries();
 		const note = JSON.stringify( entries ) === activeNoteEditor.originalEntries ?
 			activeNoteEditor.originalNote : formatCompetitionEntries( entries );
+		if ( activeNoteEditor.headerNote ) {
+			if ( note && !/^\[\[[^\]]+\]\]$/.test( note ) ) {
+				const input = activeNoteEditor.entries[ 0 ].name;
+				input.setCustomValidity( 'Yalnızca tek bir turnuvanın madde adını girin.' );
+				input.reportValidity();
+				return;
+			}
+			Array.from( tbody.querySelectorAll( 'tr' ) ).forEach( ( candidate ) => {
+				setCompetitionNoteValue( candidate, key, note );
+				candidate.tfshCompetitionNotePropagationDone[ key ] = true;
+			} );
+			closeCompetitionNoteDialog();
+			refreshPreview();
+			return;
+		}
 		const teamRows = [ row, ...matchingTeamRows( row ) ];
 		const firstEntry = Boolean( note ) && entries.filter( ( entry ) => cleanValue( entry.name ) ).length === 1 &&
 			!teamRows.some( ( candidate ) => (
@@ -5159,8 +5217,8 @@
               <th rowspan="2">Sezon bağlantısı</th>
               <th colspan="3" class="tfsh-main-league-heading">Lig</th>
               <th colspan="3" class="tfsh-local-league-heading tfsh-local-league-column tfsh-toggle-heading" role="button" tabindex="0" aria-pressed="false">Yerel lig</th>
-              <th colspan="2" class="tfsh-national-cup-heading tfsh-national-cup-column tfsh-toggle-heading" role="button" tabindex="0" aria-pressed="true">Ulusal kupa</th>
-              <th colspan="2" class="tfsh-league-cup-heading tfsh-league-cup-column tfsh-toggle-heading" role="button" tabindex="0" aria-pressed="false">Lig kupası</th>
+              <th colspan="2" class="tfsh-national-cup-heading tfsh-national-cup-column tfsh-toggle-heading" role="button" tabindex="0" aria-pressed="true"><span class="tfsh-national-cup-label">Ulusal kupa</span></th>
+              <th colspan="2" class="tfsh-league-cup-heading tfsh-league-cup-column tfsh-toggle-heading" role="button" tabindex="0" aria-pressed="false"><span class="tfsh-league-cup-label">Lig kupası</span></th>
               <th colspan="2" class="tfsh-continental-heading tfsh-continental-column tfsh-toggle-heading" role="button" tabindex="0" aria-pressed="true">Kıtasal</th>
               <th colspan="2" class="tfsh-other-heading tfsh-other-column tfsh-toggle-heading" role="button" tabindex="0" aria-pressed="true">Diğer</th>
             </tr>
@@ -5171,9 +5229,9 @@
               <th class="tfsh-local-league-column">Lig</th>
               <th class="tfsh-local-league-column tfsh-stat-heading"><span>Maç</span></th>
               <th class="tfsh-local-league-column tfsh-stat-heading"><span>Gol</span></th>
-              <th class="tfsh-national-cup-column tfsh-stat-heading"><span>Maç</span></th>
+              <th class="tfsh-national-cup-column tfsh-stat-heading"><span>Maç</span><button type="button" class="tfsh-competition-note-btn tfsh-header-note-btn" data-tfsh-header-note="cupApps" title="T\u00fcm kariyer i\u00e7in tek kupa: Yaln\u0131zca t\u00fcm sezonlarda ayn\u0131 turnuva varsa kullan\u0131n.">N</button></th>
               <th class="tfsh-national-cup-column tfsh-stat-heading"><span>Gol</span></th>
-              <th class="tfsh-league-cup-column tfsh-stat-heading"><span>Maç</span></th>
+              <th class="tfsh-league-cup-column tfsh-stat-heading"><span>Maç</span><button type="button" class="tfsh-competition-note-btn tfsh-header-note-btn" data-tfsh-header-note="leagueCupApps" title="T\u00fcm kariyer i\u00e7in tek kupa: Yaln\u0131zca t\u00fcm sezonlarda ayn\u0131 turnuva varsa kullan\u0131n.">N</button></th>
               <th class="tfsh-league-cup-column tfsh-stat-heading"><span>Gol</span></th>
               <th class="tfsh-continental-column tfsh-stat-heading"><span>Maç</span></th>
               <th class="tfsh-continental-column tfsh-stat-heading"><span>Gol</span></th>
@@ -5195,7 +5253,8 @@
       </div>
       <div class="tfsh-note-dialog-backdrop" role="presentation">
         <div class="tfsh-note-dialog-content">
-          <p>Müsabakanın Vikipedi'deki madde adını yazın. Bağlantı otomatik olarak oluşturulacaktır. Başka müsabaka eklemek için + düğmesini kullanın.</p>
+          <p class="tfsh-note-standard-help">Müsabakanın Vikipedi'deki madde adını yazın. Bağlantı otomatik olarak oluşturulacaktır. Başka müsabaka eklemek için + düğmesini kullanın.</p>
+          <p class="tfsh-header-note-help">Yaln\u0131zca futbolcunun t\u00fcm kariyerinde ayn\u0131 ulusal kupa veya lig kupas\u0131 varsa buradan not ekleyin. Tek bir turnuvan\u0131n Vikipedi madde ad\u0131n\u0131 girin. Kaydedince bu s\u00fctunun t\u00fcm sezonlar\u0131na uygulan\u0131r ve s\u00fctun ba\u015fl\u0131\u011f\u0131 turnuvan\u0131n ad\u0131 olur.</p>
           <table class="tfsh-note-table">
             <colgroup><col><col class="tfsh-note-stat-column"><col class="tfsh-note-stat-column"><col class="tfsh-note-remove-column"></colgroup>
             <thead><tr>
@@ -5250,6 +5309,9 @@
 			}
 		}
 
+		Array.from( backdrop.querySelectorAll( '[data-tfsh-header-note]' ) ).forEach( ( button ) => {
+			button.addEventListener( 'click', ( event ) => editCupHeaderNote( event, button.dataset.tfshHeaderNote, button ) );
+		} );
 		tbody = backdrop.querySelector( 'tbody' );
 		updateDateInput = backdrop.querySelector( '.tfsh-update-date' );
 		updateDateTodayInput = backdrop.querySelector( '.tfsh-update-date-today' );
