@@ -716,18 +716,6 @@
 		let groupTotalApps = 0;
 		let groupTotalGoals = 0;
 		const groupHasUnknown = rowsHaveUnknown( totalRows );
-		const groupLeagueApps = sumColumnWithUnknown( totalRows, 'leagueApps' );
-		const groupLeagueGoals = sumColumnWithUnknown( totalRows, 'leagueGoals' );
-		const groupLocalLeagueApps = sumColumnWithUnknown( totalRows, 'localLeagueApps' );
-		const groupLocalLeagueGoals = sumColumnWithUnknown( totalRows, 'localLeagueGoals' );
-		const groupCupApps = sumColumnWithUnknown( totalRows, 'cupApps' );
-		const groupCupGoals = sumColumnWithUnknown( totalRows, 'cupGoals' );
-		const groupLeagueCupApps = sumColumnWithUnknown( totalRows, 'leagueCupApps' );
-		const groupLeagueCupGoals = sumColumnWithUnknown( totalRows, 'leagueCupGoals' );
-		const groupContinentalApps = sumColumnWithUnknown( totalRows, 'continentalApps' );
-		const groupContinentalGoals = sumColumnWithUnknown( totalRows, 'continentalGoals' );
-		const groupOtherApps = sumColumnWithUnknown( totalRows, 'otherApps' );
-		const groupOtherGoals = sumColumnWithUnknown( totalRows, 'otherGoals' );
 
 		totalRows.forEach( ( row ) => {
 			const rowTotal = computeRowTotals( row );
@@ -806,38 +794,23 @@
 
 		if ( totalRows.length > 1 ) {
 			lines.push( '|-' );
-			const totalCells = [
-				'colspan="2"|Toplam',
-				groupLeagueApps.unknown ? '?' : String( groupLeagueApps.total ),
-				groupLeagueGoals.unknown ? '?' : String( groupLeagueGoals.total )
-			];
-			if ( localLeagueEnabled ) {
-				totalCells.push(
-					'-',
-					groupLocalLeagueApps.unknown ? '?' : String( groupLocalLeagueApps.total ),
-					groupLocalLeagueGoals.unknown ? '?' : String( groupLocalLeagueGoals.total )
-				);
-			}
-			if ( nationalCupEnabled ) {
-				totalCells.push(
-					groupCupApps.unknown ? '?' : String( groupCupApps.total ),
-					groupCupGoals.unknown ? '?' : String( groupCupGoals.total )
-				);
-			}
-			if ( leagueCupEnabled ) {
-				totalCells.push(
-					groupLeagueCupApps.unknown ? '?' : String( groupLeagueCupApps.total ),
-					groupLeagueCupGoals.unknown ? '?' : String( groupLeagueCupGoals.total )
-				);
-			}
-			if ( continentalEnabled ) {
-				totalCells.push( groupContinentalApps.unknown ? '?' : String( groupContinentalApps.total ) );
-				totalCells.push( groupContinentalGoals.unknown ? '?' : String( groupContinentalGoals.total ) );
-			}
-			if ( otherEnabled ) {
-				totalCells.push( groupOtherApps.unknown ? '?' : String( groupOtherApps.total ) );
-				totalCells.push( groupOtherGoals.unknown ? '?' : String( groupOtherGoals.total ) );
-			}
+			const totalCells = [ 'colspan="2"|Toplam' ];
+			activeStatPairs().forEach( ( [ appsKey, goalsKey ] ) => {
+				if ( appsKey === 'localLeagueApps' ) {
+					totalCells.push( '-' );
+				}
+				const allDashes = totalRows.every( ( row ) => (
+					[ appsKey, goalsKey ].every( ( key ) => /^[-\u2013\u2014\u2212]?$/.test( cleanValue( row[ key ] ) ) )
+				) );
+				if ( allDashes ) {
+					totalCells.push( 'colspan="2"|-' );
+				} else {
+					[ appsKey, goalsKey ].forEach( ( key ) => {
+						const sum = sumColumnWithUnknown( totalRows, key );
+						totalCells.push( sum.unknown ? '?' : String( sum.total ) );
+					} );
+				}
+			} );
 			if ( groupHasUnknown ) {
 				totalCells.push( '?' );
 				totalCells.push( '?' );
@@ -932,18 +905,6 @@
 		let grandApps = 0;
 		let grandGoals = 0;
 		const grandHasUnknown = rowsHaveUnknown( tableRows );
-		const grandLeagueApps = sumColumnWithUnknown( tableRows, 'leagueApps' );
-		const grandLeagueGoals = sumColumnWithUnknown( tableRows, 'leagueGoals' );
-		const grandLocalLeagueApps = sumColumnWithUnknown( tableRows, 'localLeagueApps' );
-		const grandLocalLeagueGoals = sumColumnWithUnknown( tableRows, 'localLeagueGoals' );
-		const grandCupApps = sumColumnWithUnknown( tableRows, 'cupApps' );
-		const grandCupGoals = sumColumnWithUnknown( tableRows, 'cupGoals' );
-		const grandLeagueCupApps = sumColumnWithUnknown( tableRows, 'leagueCupApps' );
-		const grandLeagueCupGoals = sumColumnWithUnknown( tableRows, 'leagueCupGoals' );
-		const grandContinentalApps = sumColumnWithUnknown( tableRows, 'continentalApps' );
-		const grandContinentalGoals = sumColumnWithUnknown( tableRows, 'continentalGoals' );
-		const grandOtherApps = sumColumnWithUnknown( tableRows, 'otherApps' );
-		const grandOtherGoals = sumColumnWithUnknown( tableRows, 'otherGoals' );
 
 		groups.forEach( ( group, index ) => {
 			const previous = groups[ index - 1 ];
@@ -969,38 +930,23 @@
 
 		if ( groups.length > 1 ) {
 			lines.push( '|-' );
-			const grandCells = [
-				'colspan="3"|Kariyer toplamı',
-				grandLeagueApps.unknown ? '?' : String( grandLeagueApps.total ),
-				grandLeagueGoals.unknown ? '?' : String( grandLeagueGoals.total )
-			];
-			if ( localLeagueEnabled ) {
-				grandCells.push(
-					'-',
-					grandLocalLeagueApps.unknown ? '?' : String( grandLocalLeagueApps.total ),
-					grandLocalLeagueGoals.unknown ? '?' : String( grandLocalLeagueGoals.total )
-				);
-			}
-			if ( nationalCupEnabled ) {
-				grandCells.push(
-					grandCupApps.unknown ? '?' : String( grandCupApps.total ),
-					grandCupGoals.unknown ? '?' : String( grandCupGoals.total )
-				);
-			}
-			if ( leagueCupEnabled ) {
-				grandCells.push(
-					grandLeagueCupApps.unknown ? '?' : String( grandLeagueCupApps.total ),
-					grandLeagueCupGoals.unknown ? '?' : String( grandLeagueCupGoals.total )
-				);
-			}
-			if ( continentalEnabled ) {
-				grandCells.push( grandContinentalApps.unknown ? '?' : String( grandContinentalApps.total ) );
-				grandCells.push( grandContinentalGoals.unknown ? '?' : String( grandContinentalGoals.total ) );
-			}
-			if ( otherEnabled ) {
-				grandCells.push( grandOtherApps.unknown ? '?' : String( grandOtherApps.total ) );
-				grandCells.push( grandOtherGoals.unknown ? '?' : String( grandOtherGoals.total ) );
-			}
+			const grandCells = [ 'colspan="3"|Kariyer toplam\u0131' ];
+			activeStatPairs().forEach( ( [ appsKey, goalsKey ] ) => {
+				if ( appsKey === 'localLeagueApps' ) {
+					grandCells.push( '-' );
+				}
+				const allDashes = tableRows.every( ( row ) => (
+					[ appsKey, goalsKey ].every( ( key ) => /^[-\u2013\u2014\u2212]?$/.test( cleanValue( row[ key ] ) ) )
+				) );
+				if ( allDashes ) {
+					grandCells.push( 'colspan="2"|-' );
+				} else {
+					[ appsKey, goalsKey ].forEach( ( key ) => {
+						const sum = sumColumnWithUnknown( tableRows, key );
+						grandCells.push( sum.unknown ? '?' : String( sum.total ) );
+					} );
+				}
+			} );
 			if ( grandHasUnknown ) {
 				grandCells.push( '?' );
 				grandCells.push( '?' );
@@ -1477,12 +1423,8 @@
 				const seasonPrefix = `${ cleanValue( season ) } `;
 				if ( season && parsedLeague.target.startsWith( seasonPrefix ) ) {
 					values[ key ] = cleanValue( parsedLeague.target.slice( seasonPrefix.length ) );
-				} else if ( !season ) {
-					values[ key ] = parsedLeague.label;
-				} else if ( /^\d{4}\s+\S/.test( parsedLeague.target ) ) {
-					values[ key ] = parsedLeague.target;
 				} else {
-					values[ key ] = parsedLeague.label;
+					values[ key ] = parsedLeague.target || parsedLeague.label;
 				}
 			}
 			cursor += 1;
@@ -3724,10 +3666,12 @@
 			cleanValue( candidate.tfshCompetitionNotes[ key ] )
 		) );
 		if ( firstEntry ) {
-			teamRows.forEach( ( candidate ) => {
-				candidate.tfshCompetitionNotePropagationDone[ key ] = true;
-				setCompetitionNoteValue( candidate, key, note );
-			} );
+			const orderedRows = Array.from( tbody.querySelectorAll( 'tr' ) );
+			orderedRows.slice( orderedRows.indexOf( row ) ).filter( ( candidate ) => teamRows.includes( candidate ) )
+				.forEach( ( candidate ) => {
+					candidate.tfshCompetitionNotePropagationDone[ key ] = true;
+					setCompetitionNoteValue( candidate, key, note );
+				} );
 		} else {
 			setCompetitionNoteValue( row, key, note );
 		}
