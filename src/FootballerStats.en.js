@@ -2689,13 +2689,15 @@
 		return { label, checkbox };
 	}
 
-	function matchingTeamLinkRows( sourceRow ) {
+	function matchingTeamLinkRows( sourceRow, previousLink ) {
 		const sourceInputs = sourceRow && sourceRow.tfshData && sourceRow.tfshData.inputs;
 		const team = cleanValue( sourceInputs && sourceInputs.team.value ).toLocaleLowerCase( 'en-GB' );
+		const target = cleanValue( previousLink === undefined ? sourceInputs && sourceInputs.teamLink.value : previousLink );
 		return Array.from( tbody.querySelectorAll( 'tr' ) ).filter( ( candidate ) => {
 			const inputs = candidate.tfshData && candidate.tfshData.inputs;
 			return inputs && ( candidate === sourceRow ||
-				( team && cleanValue( inputs.team.value ).toLocaleLowerCase( 'en-GB' ) === team ) );
+				( team && cleanValue( inputs.team.value ).toLocaleLowerCase( 'en-GB' ) === team &&
+					cleanValue( inputs.teamLink.value ) === target ) );
 		} );
 	}
 
@@ -2709,9 +2711,11 @@
 
 	function propagateTeamLinkValue( sourceRow ) {
 		const link = sourceRow.tfshData.inputs.teamLink.value;
-		matchingTeamLinkRows( sourceRow ).forEach( ( candidate ) => {
+		const previousLink = sourceRow.tfshData.inputs.teamLink.dataset.tfshPreviousTeamLink;
+		matchingTeamLinkRows( sourceRow, previousLink ).forEach( ( candidate ) => {
 			const inputs = candidate.tfshData.inputs;
 			inputs.teamLink.value = link;
+			inputs.teamLink.dataset.tfshPreviousTeamLink = link;
 			delete inputs.teamLink.dataset.tfshAutoTeamLink;
 			if ( cleanValue( link ) ) {
 				inputs.disableTeamLink.checked = false;
@@ -2851,6 +2855,10 @@
 				input.addEventListener( 'change', markYearEdited );
 			}
 			if ( key === 'teamLink' ) {
+				input.dataset.tfshPreviousTeamLink = input.value;
+				input.addEventListener( 'focus', () => {
+					input.dataset.tfshPreviousTeamLink = input.value;
+				} );
 				input.addEventListener( 'input', () => propagateTeamLinkValue( tr ) );
 				input.addEventListener( 'change', () => propagateTeamLinkValue( tr ) );
 			}
@@ -3064,6 +3072,7 @@
 			const inputs = row.tfshData && row.tfshData.inputs;
 			if ( inputs && inputs.teamLink.dataset.tfshAutoTeamLink === '1' && !inputs.disableTeamLink.checked ) {
 				inputs.teamLink.value = cleanValue( inputs.team.value );
+				inputs.teamLink.dataset.tfshPreviousTeamLink = inputs.teamLink.value;
 			}
 		} );
 	}
@@ -5038,6 +5047,7 @@
 				const link = links.get( stateKey( inputs ) );
 				if ( link && !inputs.disableTeamLink.checked ) {
 					inputs.teamLink.value = link;
+					inputs.teamLink.dataset.tfshPreviousTeamLink = link;
 					delete inputs.teamLink.dataset.tfshAutoTeamLink;
 					changed = true;
 				}
