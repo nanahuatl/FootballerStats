@@ -1,4 +1,22 @@
 /* FootballerStats styles | CC BY-SA 3.0 */
+.tfsh-header-note-btn {
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.tfsh-header-note-help {
+  display: none;
+}
+.tfsh-header-note-mode .tfsh-header-note-help {
+  display: block;
+}
+.tfsh-header-note-mode .tfsh-note-standard-help,
+.tfsh-note-dialog.ui-dialog .tfsh-header-note-mode .tfsh-note-add,
+.tfsh-header-note-mode .tfsh-note-preview,
+.tfsh-header-note-mode .tfsh-note-table col:not(:first-child),
+.tfsh-header-note-mode .tfsh-note-table th:not(:first-child),
+.tfsh-header-note-mode .tfsh-note-table td:not(:first-child) {
+  display: none;
+}
 #ca-footballerstats-editor a,
 #ca-footballerstats-editor-view a {
   text-transform: none !important;
