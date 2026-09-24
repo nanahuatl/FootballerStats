@@ -3523,6 +3523,26 @@
 		nextInput.select();
 	}
 
+	function initializeStickyTableHeader() {
+		const modal = backdrop.querySelector( '.tfsh-modal' );
+		const table = backdrop.querySelector( '.tfsh-table' );
+		const header = table.querySelector( 'thead' );
+		const update = () => {
+			const top = modal.getBoundingClientRect().top + modal.clientTop;
+			const bounds = table.getBoundingClientRect();
+			const offset = Math.max( 0, Math.min( top - bounds.top, table.offsetHeight - header.offsetHeight ) );
+			header.style.transform = `translateY(${ offset }px)`;
+		};
+		modal.addEventListener( 'scroll', update, { passive: true } );
+		window.addEventListener( 'resize', update );
+		if ( typeof ResizeObserver !== 'undefined' ) {
+			const observer = new ResizeObserver( update );
+			observer.observe( table );
+			observer.observe( modal );
+		}
+		update();
+	}
+
 	function refreshPreview() {
 		const rows = getRowsFromUI();
 		syncUpdateDate( rowsHaveOpenEndedClubYear( rows ) );
@@ -5228,6 +5248,7 @@
 		updateDateInput = backdrop.querySelector( '.tfsh-update-date' );
 		updateDateTodayInput = backdrop.querySelector( '.tfsh-update-date-today' );
 		tbody.addEventListener( 'keydown', handleTableKeyboardNavigation );
+		initializeStickyTableHeader();
 		updateDateInput.addEventListener( 'input', () => {
 			updateDateDraft = updateDateInput.value;
 			updateDateAutomatic = false;
