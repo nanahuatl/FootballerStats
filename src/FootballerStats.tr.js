@@ -1028,10 +1028,12 @@
 		}
 		const detailed = [];
 		let remainder = value.replace(
-			/(\[\[[^\]]+\]\])'?n?[dt][ae]ki\s+(\d+)\s+ma\u00e7(?:\u0131)?(?:\s+ve\s+(\d+)\s+gol(?:\u00fc)?)?/g,
+			/(.+?)'?n?[dt][ae]ki\s+(\d+)\s+ma\u00e7(?:\u0131)?(?:\s+ve\s+(\d+)\s+gol(?:\u00fc)?)?/g,
 			( full, link, apps, goals ) => {
-				const target = link.match( /^\[\[([^|\]]+)/ )[ 1 ];
-				detailed.push( { name: target, apps, goals: goals || '0' } );
+				const name = cleanValue( link ).replace( /^(?:,\s*|(?:ve|ile)\s+)+/, '' );
+				const target = name.match( /^\[\[([^|\]]+)(?:\|[^\]]+)?\]\]$/ );
+				detailed.push( { name: target && competitionLink( target[ 1 ] ) === name ? target[ 1 ] : name,
+					apps, goals: goals || '0' } );
 				return '';
 			}
 		);
