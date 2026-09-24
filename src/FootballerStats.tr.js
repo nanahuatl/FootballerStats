@@ -709,7 +709,7 @@
 			.map( ( item ) => item.row );
 	}
 
-	function buildGroupRowLines( group, totalRows = group.rows, noteNames = new Map() ) {
+	function buildGroupRowLines( group, totalRows = group.rows, noteNames = new Map(), headerNotes = new Set() ) {
 		const lines = [];
 		const representative = group.rows[ 0 ];
 		const rowSpan = totalRows.length > 1 ? group.rows.length + 1 : group.rows.length;
@@ -760,10 +760,10 @@
 				}
 			}
 			if ( nationalCupEnabled ) {
-				competitionPairs.push( competitionPair( row, 'cupApps', 'cupGoals', noteNames ) );
+				competitionPairs.push( competitionPair( row, 'cupApps', 'cupGoals', noteNames, headerNotes ) );
 			}
 			if ( leagueCupEnabled ) {
-				competitionPairs.push( competitionPair( row, 'leagueCupApps', 'leagueCupGoals', noteNames ) );
+				competitionPairs.push( competitionPair( row, 'leagueCupApps', 'leagueCupGoals', noteNames, headerNotes ) );
 			}
 			if ( continentalEnabled ) {
 				competitionPairs.push( competitionPair( row, 'continentalApps', 'continentalGoals', noteNames ) );
@@ -908,6 +908,10 @@
 			subHeaders.push( 'Maç', 'Gol' );
 		}
 		topHeaders.push( 'colspan="2"|Toplam' );
+		const headerNotes = new Set( topHeaders.map( ( header ) => {
+			const match = header.match( /data-tfsh-competition="(cupApps|leagueCupApps)"/ );
+			return match ? match[ 1 ] : '';
+		} ).filter( Boolean ) );
 		subHeaders.push( 'Maç', 'Gol' );
 		const lines = [
 			'{| class="wikitable" style="text-align:center"',
@@ -937,7 +941,7 @@
 					group.totalRows = [ ...( previous.totalRows || previous.rows ), ...group.rows ];
 				}
 			}
-			const groupRow = buildGroupRowLines( group, group.totalRows, noteNames );
+			const groupRow = buildGroupRowLines( group, group.totalRows, noteNames, headerNotes );
 			lines.push( ...groupRow.lines );
 			grandApps += groupRow.totalApps;
 			grandGoals += groupRow.totalGoals;
@@ -1184,9 +1188,9 @@
 			{ ...pair, apps: pair.apps + appsRefs, goals: pair.goals + goalsRefs };
 	}
 
-	function competitionPair( row, appsKey, goalsKey, noteNames ) {
+	function competitionPair( row, appsKey, goalsKey, noteNames, headerNotes = new Set() ) {
 		const pair = tableStatPair( row, appsKey, goalsKey );
-		if ( pair.merged ) {
+		if ( pair.merged || headerNotes.has( appsKey ) ) {
 			return { ...pair, note: '' };
 		}
 		const note = cleanValue( row.competitionNotes && row.competitionNotes[ appsKey ] );
@@ -3681,6 +3685,8 @@
 		if ( next ) {
 			next.focus();
 			next.select();
+		} else if ( !event.shiftKey ) {
+			saveCompetitionNote();
 		}
 	}
 
