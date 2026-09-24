@@ -1162,10 +1162,13 @@
 		const detailed = [];
 		let remainder = value.replace(
 			new RegExp( '(' + NOTE_NUMBER_PATTERN + ') appearances?(?: and (' +
-				NOTE_NUMBER_PATTERN + ') goals?)? in (\\[\\[[^\\]]+\\]\\])', 'gi' ),
+				NOTE_NUMBER_PATTERN + ') goals?)? in (.+?)(?=, (?:and )?' + NOTE_NUMBER_PATTERN +
+				' appearances?\\b| and ' + NOTE_NUMBER_PATTERN + ' appearances?\\b|\\.$|$)', 'gi' ),
 			( full, apps, goals, link ) => {
-				const target = link.match( /^\[\[([^|\]]+)/ )[ 1 ];
-				detailed.push( { name: target, apps: parseNoteNumber( apps ),
+				const name = cleanValue( link );
+				const target = name.match( /^\[\[([^|\]]+)(?:\|[^\]]+)?\]\]$/ );
+				detailed.push( { name: target && competitionLink( target[ 1 ] ) === name ? target[ 1 ] : name,
+					apps: parseNoteNumber( apps ),
 					goals: goals ? parseNoteNumber( goals ) : '0' } );
 				return '';
 			}
