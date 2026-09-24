@@ -3550,7 +3550,6 @@
 
 	function refreshPreview() {
 		const rows = getRowsFromUI();
-		updateCupHeaderLabels( rows );
 		syncUpdateDate( rowsHaveOpenEndedClubYear( rows ) );
 		mw.storage.set( getRowsStorageKey(), JSON.stringify( rows ) );
 		mw.storage.set( getOtherNoteStorageKey(), otherNote );
@@ -3562,6 +3561,7 @@
 		updateInfoboxYearVisibility();
 		updateOptionalCompetitionColumns();
 		updateInfoboxOnlyFields();
+		updateCupHeaderLabels( rows );
 		updateUiGrouping();
 	}
 
@@ -3733,6 +3733,9 @@
 		const dialogBackdrop = backdrop.querySelector( '.tfsh-note-dialog-backdrop' );
 		const content = dialogBackdrop.querySelector( '.tfsh-note-dialog-content' );
 		content.classList.add( 'tfsh-header-note-mode' );
+		content.querySelector( '.tfsh-header-note-help' ).textContent =
+			`Futbolcu, tüm kariyerinde aynı ${ key === 'cupApps' ? 'ulusal kupada' : 'lig kupasında' } yer almışsa buradan genel bir not ekleyin.` +
+			'\n\nTurnuvanın Vikipedi maddesinin adını girin.';
 		activeNoteEditor = { key, button, headerNote: true, entries: [], originalNote };
 		backdrop.querySelector( '.tfsh-note-entries' ).textContent = '';
 		addCompetitionEntry( parseCompetitionEntries( originalNote )[ 0 ] );
@@ -3755,9 +3758,20 @@
 			const header = sharedCupHeader(
 				rows.filter( ( row ) => !row.infoboxOnly ), key, COMPETITION_NOTE_LABELS[ key ]
 			);
-			label.textContent = parseWikiLinkValue( extractCellContent( header ) ).label;
+			label.textContent = COMPETITION_NOTE_LABELS[ key ];
 			const button = backdrop.querySelector( `[data-tfsh-header-note="${ key }"]` );
-			button.classList.toggle( 'has-note', header.includes( 'data-tfsh-competition' ) );
+			const shared = header.includes( 'data-tfsh-competition' );
+			button.classList.toggle( 'has-note', shared );
+			Array.from( tbody.querySelectorAll( 'tr' ) ).forEach( ( row ) => {
+				const noteButton = row.tfshCompetitionNoteButtons[ key ];
+				if ( noteButton ) {
+					noteButton.classList.toggle( 'tfsh-header-note-locked', shared );
+					if ( shared ) {
+						noteButton.classList.add( 'has-note' );
+						noteButton.disabled = true;
+					}
+				}
+			} );
 		} );
 	}
 
@@ -5229,9 +5243,9 @@
               <th class="tfsh-local-league-column">Lig</th>
               <th class="tfsh-local-league-column tfsh-stat-heading"><span>Maç</span></th>
               <th class="tfsh-local-league-column tfsh-stat-heading"><span>Gol</span></th>
-              <th class="tfsh-national-cup-column tfsh-stat-heading"><span>Maç</span><button type="button" class="tfsh-competition-note-btn tfsh-header-note-btn" data-tfsh-header-note="cupApps" title="T\u00fcm kariyer i\u00e7in tek kupa: Yaln\u0131zca t\u00fcm sezonlarda ayn\u0131 turnuva varsa kullan\u0131n.">N</button></th>
+              <th class="tfsh-national-cup-column tfsh-stat-heading tfsh-header-note-heading"><span>Maç</span><button type="button" class="tfsh-competition-note-btn tfsh-header-note-btn" data-tfsh-header-note="cupApps" title="T\u00fcm kariyer i\u00e7in tek kupa: Yaln\u0131zca t\u00fcm sezonlarda ayn\u0131 turnuva varsa kullan\u0131n.">N</button></th>
               <th class="tfsh-national-cup-column tfsh-stat-heading"><span>Gol</span></th>
-              <th class="tfsh-league-cup-column tfsh-stat-heading"><span>Maç</span><button type="button" class="tfsh-competition-note-btn tfsh-header-note-btn" data-tfsh-header-note="leagueCupApps" title="T\u00fcm kariyer i\u00e7in tek kupa: Yaln\u0131zca t\u00fcm sezonlarda ayn\u0131 turnuva varsa kullan\u0131n.">N</button></th>
+              <th class="tfsh-league-cup-column tfsh-stat-heading tfsh-header-note-heading"><span>Maç</span><button type="button" class="tfsh-competition-note-btn tfsh-header-note-btn" data-tfsh-header-note="leagueCupApps" title="T\u00fcm kariyer i\u00e7in tek kupa: Yaln\u0131zca t\u00fcm sezonlarda ayn\u0131 turnuva varsa kullan\u0131n.">N</button></th>
               <th class="tfsh-league-cup-column tfsh-stat-heading"><span>Gol</span></th>
               <th class="tfsh-continental-column tfsh-stat-heading"><span>Maç</span></th>
               <th class="tfsh-continental-column tfsh-stat-heading"><span>Gol</span></th>
@@ -5254,7 +5268,7 @@
       <div class="tfsh-note-dialog-backdrop" role="presentation">
         <div class="tfsh-note-dialog-content">
           <p class="tfsh-note-standard-help">Müsabakanın Vikipedi'deki madde adını yazın. Bağlantı otomatik olarak oluşturulacaktır. Başka müsabaka eklemek için + düğmesini kullanın.</p>
-          <p class="tfsh-header-note-help">Yaln\u0131zca futbolcunun t\u00fcm kariyerinde ayn\u0131 ulusal kupa veya lig kupas\u0131 varsa buradan not ekleyin. Tek bir turnuvan\u0131n Vikipedi madde ad\u0131n\u0131 girin. Kaydedince bu s\u00fctunun t\u00fcm sezonlar\u0131na uygulan\u0131r ve s\u00fctun ba\u015fl\u0131\u011f\u0131 turnuvan\u0131n ad\u0131 olur.</p>
+          <p class="tfsh-header-note-help"></p>
           <table class="tfsh-note-table">
             <colgroup><col><col class="tfsh-note-stat-column"><col class="tfsh-note-stat-column"><col class="tfsh-note-remove-column"></colgroup>
             <thead><tr>
