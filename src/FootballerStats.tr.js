@@ -1009,11 +1009,12 @@
 				.toLocaleLowerCase( 'tr-TR' );
 			const vowels = label.match( /[ae\u0131io\u00f6u\u00fc]/g ) || [ 'a' ];
 			const vowel = /[a\u0131ou]/.test( vowels[ vowels.length - 1 ] ) ? 'a' : 'e';
-			const possessive = /(?:s[\u0131iu\u00fc]|ligi|oyunlar\u0131|kupalar\u0131)$/.test( label );
+			const playoffs = /off'{0,3}lar\u0131$/.test( label );
+			const possessive = playoffs || /(?:s[\u0131iu\u00fc]|ligi|oyunlar\u0131|kupalar\u0131)$/.test( label );
 			const consonant = /[fstk\u00e7\u015fhp]$/.test( label ) ? 't' : 'd';
 			const suffix = ( possessive ? 'n' : '' ) + consonant + vowel + 'ki';
 			const goals = Number( entry.goals || 0 );
-			return link + "'" + suffix + ' ' + Number( entry.apps ) + ' ma\u00e7' +
+			return link + ( playoffs ? '' : "'" ) + suffix + ' ' + Number( entry.apps ) + ' ma\u00e7' +
 				( goals ? ' ve ' + goals + ' gol' : '' );
 		} );
 		const ending = Number( filled[ filled.length - 1 ].goals || 0 ) ? '\u00fc' : '\u0131';
@@ -1027,7 +1028,7 @@
 		}
 		const detailed = [];
 		let remainder = value.replace(
-			/(\[\[[^\]]+\]\])'n?[dt][ae]ki\s+(\d+)\s+ma\u00e7(?:\u0131)?(?:\s+ve\s+(\d+)\s+gol(?:\u00fc)?)?/g,
+			/(\[\[[^\]]+\]\])'?n?[dt][ae]ki\s+(\d+)\s+ma\u00e7(?:\u0131)?(?:\s+ve\s+(\d+)\s+gol(?:\u00fc)?)?/g,
 			( full, link, apps, goals ) => {
 				const target = link.match( /^\[\[([^|\]]+)/ )[ 1 ];
 				detailed.push( { name: target, apps, goals: goals || '0' } );
@@ -3599,6 +3600,26 @@
 		} );
 	}
 
+	function handleCompetitionNoteKeyboardNavigation( event ) {
+		if ( event.key !== 'Enter' || event.isComposing || event.ctrlKey || event.altKey || event.metaKey ||
+			!activeNoteEditor ) {
+			return;
+		}
+		const inputs = activeNoteEditor.entries.flatMap( ( entry ) => [ entry.name, entry.apps, entry.goals ] )
+			.filter( ( input ) => !input.disabled );
+		const index = inputs.indexOf( event.target );
+		if ( index === -1 ) {
+			return;
+		}
+		event.preventDefault();
+		event.stopPropagation();
+		const next = inputs[ index + ( event.shiftKey ? -1 : 1 ) ];
+		if ( next ) {
+			next.focus();
+			next.select();
+		}
+	}
+
 	function closeCompetitionNoteDialog() {
 		const content = backdrop && backdrop.querySelector( '.tfsh-note-dialog-content' );
 		if ( content ) {
@@ -3661,10 +3682,11 @@
 		const note = JSON.stringify( entries ) === activeNoteEditor.originalEntries ?
 			activeNoteEditor.originalNote : formatCompetitionEntries( entries );
 		const teamRows = [ row, ...matchingTeamRows( row ) ];
-		const firstEntry = Boolean( note ) && !teamRows.some( ( candidate ) => (
-			candidate.tfshCompetitionNotePropagationDone[ key ] ||
-			cleanValue( candidate.tfshCompetitionNotes[ key ] )
-		) );
+		const firstEntry = Boolean( note ) && entries.filter( ( entry ) => cleanValue( entry.name ) ).length === 1 &&
+			!teamRows.some( ( candidate ) => (
+				candidate.tfshCompetitionNotePropagationDone[ key ] ||
+				cleanValue( candidate.tfshCompetitionNotes[ key ] )
+			) );
 		if ( firstEntry ) {
 			const orderedRows = Array.from( tbody.querySelectorAll( 'tr' ) );
 			orderedRows.slice( orderedRows.indexOf( row ) ).filter( ( candidate ) => teamRows.includes( candidate ) )
@@ -5210,12 +5232,8 @@
 		backdrop.querySelector( '.tfsh-note-add' ).addEventListener( 'click', () => {
 			addCompetitionEntry().name.focus();
 		} );
-		backdrop.querySelector( '.tfsh-note-dialog-content' ).addEventListener( 'keydown', ( event ) => {
-			if ( event.key === 'Enter' && event.target.matches( 'input' ) ) {
-				event.preventDefault();
-				saveCompetitionNote();
-			}
-		} );
+		backdrop.querySelector( '.tfsh-note-dialog-content' )
+			.addEventListener( 'keydown', handleCompetitionNoteKeyboardNavigation );
 		backdrop.querySelector( '.tfsh-league-cup-heading' ).addEventListener( 'click', toggleLeagueCup );
 		backdrop.querySelector( '.tfsh-local-league-heading' ).addEventListener( 'click', toggleLocalLeague );
 		backdrop.querySelector( '.tfsh-national-cup-heading' ).addEventListener( 'click', toggleNationalCup );
