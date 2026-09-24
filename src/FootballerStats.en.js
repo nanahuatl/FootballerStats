@@ -3797,6 +3797,26 @@
 		} );
 	}
 
+	function handleCompetitionNoteKeyboardNavigation( event ) {
+		if ( event.key !== 'Enter' || event.isComposing || event.ctrlKey || event.altKey || event.metaKey ||
+			!activeNoteEditor ) {
+			return;
+		}
+		const inputs = activeNoteEditor.entries.flatMap( ( entry ) => [ entry.name, entry.apps, entry.goals ] )
+			.filter( ( input ) => !input.disabled );
+		const index = inputs.indexOf( event.target );
+		if ( index === -1 ) {
+			return;
+		}
+		event.preventDefault();
+		event.stopPropagation();
+		const next = inputs[ index + ( event.shiftKey ? -1 : 1 ) ];
+		if ( next ) {
+			next.focus();
+			next.select();
+		}
+	}
+
 	function closeCompetitionNoteDialog() {
 		const content = backdrop && backdrop.querySelector( '.tfsh-note-dialog-content' );
 		if ( content ) {
@@ -3859,10 +3879,11 @@
 		const note = JSON.stringify( entries ) === activeNoteEditor.originalEntries ?
 			activeNoteEditor.originalNote : formatCompetitionEntries( entries );
 		const teamRows = [ row, ...matchingTeamRows( row ) ];
-		const firstEntry = Boolean( note ) && !teamRows.some( ( candidate ) => (
-			candidate.tfshCompetitionNotePropagationDone[ key ] ||
-			cleanValue( candidate.tfshCompetitionNotes[ key ] )
-		) );
+		const firstEntry = Boolean( note ) && entries.filter( ( entry ) => cleanValue( entry.name ) ).length === 1 &&
+			!teamRows.some( ( candidate ) => (
+				candidate.tfshCompetitionNotePropagationDone[ key ] ||
+				cleanValue( candidate.tfshCompetitionNotes[ key ] )
+			) );
 		if ( firstEntry ) {
 			const orderedRows = Array.from( tbody.querySelectorAll( 'tr' ) );
 			orderedRows.slice( orderedRows.indexOf( row ) ).filter( ( candidate ) => teamRows.includes( candidate ) )
@@ -5470,12 +5491,8 @@
 		backdrop.querySelector( '.tfsh-note-add' ).addEventListener( 'click', () => {
 			addCompetitionEntry().name.focus();
 		} );
-		backdrop.querySelector( '.tfsh-note-dialog-content' ).addEventListener( 'keydown', ( event ) => {
-			if ( event.key === 'Enter' && event.target.matches( 'input' ) ) {
-				event.preventDefault();
-				saveCompetitionNote();
-			}
-		} );
+		backdrop.querySelector( '.tfsh-note-dialog-content' )
+			.addEventListener( 'keydown', handleCompetitionNoteKeyboardNavigation );
 		backdrop.querySelector( '.tfsh-league-cup-heading' ).addEventListener( 'click', toggleLeagueCup );
 		backdrop.querySelector( '.tfsh-local-league-heading' ).addEventListener( 'click', toggleLocalLeague );
 		backdrop.querySelector( '.tfsh-national-cup-heading' ).addEventListener( 'click', toggleNationalCup );
