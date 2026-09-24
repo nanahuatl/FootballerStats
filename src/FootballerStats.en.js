@@ -3864,10 +3864,12 @@
 			cleanValue( candidate.tfshCompetitionNotes[ key ] )
 		) );
 		if ( firstEntry ) {
-			teamRows.forEach( ( candidate ) => {
-				candidate.tfshCompetitionNotePropagationDone[ key ] = true;
-				setCompetitionNoteValue( candidate, key, note );
-			} );
+			const orderedRows = Array.from( tbody.querySelectorAll( 'tr' ) );
+			orderedRows.slice( orderedRows.indexOf( row ) ).filter( ( candidate ) => teamRows.includes( candidate ) )
+				.forEach( ( candidate ) => {
+					candidate.tfshCompetitionNotePropagationDone[ key ] = true;
+					setCompetitionNoteValue( candidate, key, note );
+				} );
 		} else {
 			setCompetitionNoteValue( row, key, note );
 		}
