@@ -861,6 +861,21 @@
 		return result;
 	}
 
+	function sharedCupHeader( rows, key, fallback ) {
+		const notes = rows.map( ( row ) => cleanValue( row.competitionNotes && row.competitionNotes[ key ] ) );
+		const hasStatistics = rows.some( ( row ) => !pairDisplay( row[ key ], row[ key.replace( /Apps$/, 'Goals' ) ] ).merged );
+		if ( !hasStatistics || !notes.length || !notes[ 0 ] || !notes.every( ( note ) => note === notes[ 0 ] ) ) {
+			return `colspan="2"|${ fallback }`;
+		}
+		const entries = parseCompetitionEntries( notes[ 0 ] );
+		const link = entries.length === 1 && !entries[ 0 ].apps && !entries[ 0 ].goals ?
+			competitionLink( entries[ 0 ].name ) : '';
+		if ( !/^\[\[[^\]]+\]\]$/.test( link ) ) {
+			return `colspan="2"|${ fallback }`;
+		}
+		return `colspan="2" data-tfsh-competition="${ key }"|${ link }`;
+	}
+
 	function buildTableWikitext( rows ) {
 		const noteNames = new Map();
 		const tableRows = rows.filter( ( row ) => !normalizeBoolean( row.infoboxOnly ) );
@@ -877,11 +892,11 @@
 			subHeaders.push( 'Lig', 'Maç', 'Gol' );
 		}
 		if ( nationalCupEnabled ) {
-			topHeaders.push( 'colspan="2"|Ulusal kupa' );
+			topHeaders.push( sharedCupHeader( tableRows, 'cupApps', 'Ulusal kupa' ) );
 			subHeaders.push( 'Maç', 'Gol' );
 		}
 		if ( leagueCupEnabled ) {
-			topHeaders.push( 'colspan="2"|Lig kupası' );
+			topHeaders.push( sharedCupHeader( tableRows, 'leagueCupApps', 'Lig kupası' ) );
 			subHeaders.push( 'Maç', 'Gol' );
 		}
 		if ( continentalEnabled ) {
@@ -1567,16 +1582,29 @@
 		const otherNoteMatch = section.match( /Diğer\s*\{\{adn\|(.+?) maçlarını içerir\.\}\}/i );
 		const parsedOtherNote = cleanValue( otherNoteMatch ? otherNoteMatch[ 1 ] : '' );
 		const tableRows = careerTableRows( section );
+		const cupHeaderNotes = {};
+		tableRows.filter( ( row ) => row.header ).forEach( ( row ) => {
+			row.cells.forEach( ( cell ) => {
+				const marker = cell.slice( 0, cell.indexOf( '|' ) ).match(
+					/\bdata-tfsh-competition\s*=\s*["']?(cupApps|leagueCupApps)\b/i
+				);
+				const content = extractCellContent( cell );
+				if ( marker && /^\[\[[^\]]+\]\]$/.test( content ) ) {
+					const key = marker[ 1 ].toLowerCase() === 'cupapps' ? 'cupApps' : 'leagueCupApps';
+					cupHeaderNotes[ key ] = content;
+				}
+			} );
+		} );
 		const hasLeagueName = /colspan\s*=\s*"3"\s*\|\s*Lig/i.test( section );
 		const hasLocalLeague = /colspan\s*=\s*"3"\s*\|\s*Yerel lig/i.test( section );
 		if ( hasLocalLeague ) {
 			localLeagueEnabled = true;
 		}
-		const hasLeagueCup = /colspan\s*=\s*"2"\s*\|\s*Lig kupası/i.test( section );
+		const hasLeagueCup = Boolean( cupHeaderNotes.leagueCupApps ) || /colspan\s*=\s*"2"\s*\|\s*Lig kupası/i.test( section );
 		if ( hasLeagueCup ) {
 			leagueCupEnabled = true;
 		}
-		const hasNationalCup = /colspan\s*=\s*"2"\s*\|\s*Ulusal kupa/i.test( section );
+		const hasNationalCup = Boolean( cupHeaderNotes.cupApps ) || /colspan\s*=\s*"2"\s*\|\s*Ulusal kupa/i.test( section );
 		const hasContinental = /colspan\s*=\s*"2"\s*\|\s*Kıtasal/i.test( section );
 		const hasOther = /colspan\s*=\s*"2"\s*\|\s*Diğer/i.test( section );
 		nationalCupEnabled = hasNationalCup;
@@ -1648,6 +1676,11 @@
 				row.competitionNotes.otherApps = row.competitionNotes.otherApps || parsedOtherNote;
 			} );
 		}
+		rows.forEach( ( row ) => {
+			Object.keys( cupHeaderNotes ).forEach( ( key ) => {
+				row.competitionNotes[ key ] = row.competitionNotes[ key ] || cupHeaderNotes[ key ];
+			} );
+		} );
 		return { rows, otherNote: parsedOtherNote };
 	}
 
