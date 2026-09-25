@@ -876,10 +876,79 @@
 		return `colspan="2" data-tfsh-competition="${ key }"|${ link }`;
 	}
 
+	function mergeCompetitionNotes( rows ) {
+		const groups = new Map();
+		const result = rows.map( ( row ) => ( { ...row, competitionNotes: { ...row.competitionNotes } } ) );
+		result.forEach( ( row ) => {
+			Object.entries( row.competitionNotes ).forEach( ( [ key, note ] ) => {
+				const entries = parseCompetitionEntries( note );
+				if ( entries.length !== 1 || entries[ 0 ].apps || entries[ 0 ].goals ) {
+					return;
+				}
+				const link = competitionLink( entries[ 0 ].name );
+				const match = link.match( /^\[\[([^|\]]+)(?:\|([^\]]+))?\]\]$/ );
+				// Only bare links qualify: never reinterpret a free-form explanatory note.
+				if ( !match || cleanValue( note ) !== link ) {
+					return;
+				}
+				const target = match[ 1 ];
+				if ( !groups.has( target ) ) {
+					groups.set( target, { labels: [], cells: [] } );
+				}
+				const group = groups.get( target );
+				( match[ 2 ] || target ).split( ' / ' ).forEach( ( label ) => {
+					if ( !group.labels.includes( label ) ) {
+						group.labels.push( label );
+					}
+				} );
+				group.cells.push( { row, key } );
+			} );
+		} );
+		groups.forEach( ( group, target ) => {
+			const note = buildWikiLink( target, group.labels.join( ' / ' ) );
+			group.cells.forEach( ( { row, key } ) => {
+				row.competitionNotes[ key ] = note;
+			} );
+		} );
+		return result;
+	}
+
+	async function resolveCompetitionRedirects( rows ) {
+		const notes = [];
+		const targets = new Set();
+		rows.forEach( ( row, index ) => {
+			Object.entries( row.competitionNotes || {} ).forEach( ( [ key, note ] ) => {
+				const text = cleanValue( note );
+				text.replace( /\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g, ( full, target ) => {
+					targets.add( target );
+					return full;
+				} );
+				notes.push( { index, key, text } );
+			} );
+		} );
+		const titles = Array.from( targets );
+		let resolved;
+		try {
+			resolved = await resolveTeamRedirects( titles.map( ( title ) => ( { teamLink: title } ) ) );
+		} catch ( error ) {
+			mw.log.warn( 'FootballerStats: competition redirects could not be resolved.', error );
+			return rows;
+		}
+		const links = new Map( titles.map( ( title, index ) => [ title, resolved[ index ].teamLink ] ) );
+		const result = rows.map( ( row ) => ( { ...row, competitionNotes: { ...row.competitionNotes } } ) );
+		notes.forEach( ( { index, key, text } ) => {
+			result[ index ].competitionNotes[ key ] = text.replace(
+				/\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g,
+				( full, target, label ) => buildWikiLink( links.get( target ) || target, label || target )
+			);
+		} );
+		return result;
+	}
+
 	function buildTableWikitext( rows ) {
 		const noteNames = new Map();
 		const tableRows = rows.filter( ( row ) => !normalizeBoolean( row.infoboxOnly ) );
-		const sortedRows = sortRowsForCareerTable( tableRows );
+		const sortedRows = sortRowsForCareerTable( mergeCompetitionNotes( tableRows ) );
 		const groups = groupRowsByTeam( orderCareerTableLoans( sortedRows ) );
 		const topHeaders = [
 			'rowspan="2"|Takım',
@@ -1062,7 +1131,7 @@
 		const entries = [];
 		const plain = value.replace( / ma\u00e7lar\u0131n\u0131 (?:i\u00e7erir|kapsar)\.$/, '' );
 		remainder = plain.replace( /\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g, ( full, target ) => {
-			entries.push( { name: target, apps: '', goals: '' } );
+			entries.push( { name: competitionLink( target ) === full ? target : full, apps: '', goals: '' } );
 			return '';
 		} );
 		if ( entries.length && !remainder.replace( /[\s,]|\b(?:ve|ile)\b/g, '' ) ) {
@@ -5005,7 +5074,7 @@
 			assertVisualEditorSession( visualEditorSession );
 			const session = await readVisualEditorSession();
 			const resolvedSource = await resolveInfoboxRedirects( session.source );
-			const resolvedRows = await resolveTeamRedirects( rows );
+			const resolvedRows = await resolveCompetitionRedirects( await resolveTeamRedirects( rows ) );
 			const nextText = buildUpdatedArticle( resolvedSource, resolvedRows );
 			const response = await session.target.parseWikitextFragment(
 				nextText, false, session.doc
@@ -5073,7 +5142,7 @@
 
 		try {
 			const resolvedSource = await resolveInfoboxRedirects( editorText );
-			const resolvedRows = await resolveTeamRedirects( rows );
+			const resolvedRows = await resolveCompetitionRedirects( await resolveTeamRedirects( rows ) );
 			const nextText = buildUpdatedArticle( resolvedSource, resolvedRows );
 			setEditorText( nextText );
 			refreshPreview();
