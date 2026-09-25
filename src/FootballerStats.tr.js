@@ -1077,10 +1077,13 @@
 		if ( !value ) {
 			return '';
 		}
-		if ( /(?:ma\u00e7\u0131|gol\u00fc) (?:i\u00e7erir|kapsar)\.$/.test( value ) ) {
-			return value.replace( /i\u00e7erir\.$/, 'kapsar.' );
+		if ( / (?:i\u00e7erir|kapsar)\.$/.test( value ) ) {
+			const entries = parseCompetitionEntries( value );
+			if ( entries.length > 1 || entries[ 0 ].name !== value ) {
+				return formatCompetitionEntries( entries );
+			}
 		}
-		return value + ' ma\u00e7lar\u0131n\u0131 kapsar.';
+		return value;
 	}
 
 	function formatCompetitionEntries( entries ) {
@@ -1093,26 +1096,31 @@
 		}
 		const parts = filled.map( ( entry ) => {
 			const link = competitionLink( entry.name );
-			const label = link.replace( /^\[\[([^|\]]+)(?:\|([^\]]+))?\]\]$/, ( full, target, text ) => text || target )
-				.toLocaleLowerCase( 'tr-TR' );
-			const vowels = label.match( /[ae\u0131io\u00f6u\u00fc]/g ) || [ 'a' ];
-			const vowel = /[a\u0131ou]/.test( vowels[ vowels.length - 1 ] ) ? 'a' : 'e';
-			const playoffs = /off'{0,3}lar\u0131$/.test( label );
-			const possessive = playoffs || /(?:s[\u0131iu\u00fc]|ligi|oyunlar\u0131|kupalar\u0131)$/.test( label );
-			const consonant = /[fstk\u00e7\u015fhp]$/.test( label ) ? 't' : 'd';
-			const suffix = ( possessive ? 'n' : '' ) + consonant + vowel + 'ki';
 			const goals = Number( entry.goals || 0 );
-			return link + ( playoffs ? '' : "'" ) + suffix + ' ' + Number( entry.apps ) + ' ma\u00e7' +
-				( goals ? ' ve ' + goals + ' gol' : '' );
+			return link + ': ' + Number( entry.apps ) + ' ma\u00e7' +
+				( goals ? ', ' + goals + ' gol' : '' );
 		} );
-		const ending = Number( filled[ filled.length - 1 ].goals || 0 ) ? '\u00fc' : '\u0131';
-		return joinCompetitionItems( parts ) + ending + ' kapsar.';
+		return parts.join( '; ' );
 	}
 
 	function parseCompetitionEntries( note ) {
 		const value = cleanValue( note );
 		if ( !value ) {
 			return [ { name: '', apps: '', goals: '' } ];
+		}
+		const compactEntries = [];
+		const compactRemainder = value.replace(
+			/(.+?):\s*(\d+)\s+ma\u00e7(?:,\s*(\d+)\s+gol)?\s*(?:;\s*|$)/g,
+			( full, link, apps, goals ) => {
+				const name = cleanValue( link );
+				const target = name.match( /^\[\[([^|\]]+)(?:\|[^\]]+)?\]\]$/ );
+				compactEntries.push( { name: target && competitionLink( target[ 1 ] ) === name ? target[ 1 ] : name,
+					apps, goals: goals || '0' } );
+				return '';
+			}
+		);
+		if ( compactEntries.length > 1 && !cleanValue( compactRemainder ) ) {
+			return compactEntries;
 		}
 		const detailed = [];
 		let remainder = value.replace(
