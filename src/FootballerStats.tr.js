@@ -1225,7 +1225,8 @@
 			activeNoteEditor.entries = activeNoteEditor.entries.filter( ( item ) => item !== entry );
 			element.remove();
 			if ( !activeNoteEditor.entries.length ) {
-				addCompetitionEntry().name.focus();
+				saveCompetitionNote();
+				return;
 			}
 			updateCompetitionEntryState();
 		} );
@@ -3589,6 +3590,18 @@
 		const currentInput = event.target.closest( 'input[type="text"]' );
 		if ( !currentInput || !tbody.contains( currentInput ) ) {
 			return;
+		}
+
+		if ( !event.shiftKey && !cleanValue( currentInput.value ) ) {
+			const row = currentInput.closest( 'tr' );
+			const pair = row && STAT_PAIRS.find( ( keys ) => keys.some(
+				( key ) => row.tfshData.inputs[ key ] === currentInput
+			) );
+			if ( pair && COMPETITION_NOTE_LABELS[ pair[ 0 ] ] ) {
+				setCompetitionNoteValue( row, pair[ 0 ], '' );
+				row.tfshCompetitionNotePropagationDone[ pair[ 0 ] ] = true;
+				refreshPreview();
+			}
 		}
 
 		const visibleInputs = Array.from( tbody.querySelectorAll( 'input[type="text"]' ) )
