@@ -978,3 +978,94 @@
   opacity: 1;
   cursor: default;
 }
+
+/* Keep the MonoBook dialog typography in both Vector skins as well.
+ * Vector's jquery.ui theme adds !important titlebar padding/background. */
+.tfsh-note-dialog.ui-dialog.ui-widget {
+  font: 11px/normal 'Verdana', 'Arial', sans-serif;
+  color: #222;
+}
+
+.tfsh-note-dialog.ui-dialog.ui-widget .ui-dialog-content {
+  color: #222;
+}
+
+.tfsh-note-dialog.ui-dialog.ui-widget .ui-dialog-titlebar {
+  padding: 0 44px !important;
+  background: var( --background-color-base, #fff ) !important;
+}
+
+/* The header is custom markup, not an OOUI-managed ProcessDialog.
+ * Isolate it from Apex (MonoBook) and WikimediaUI (Vector) action sizing. */
+.tfsh-modal .tfsh-head > .oo-ui-window-head {
+  padding: 0;
+}
+
+.tfsh-modal .tfsh-head .oo-ui-processDialog-navigation {
+  box-sizing: border-box;
+  height: 47.6px;
+  min-height: 47.6px;
+  padding: 0;
+}
+
+.tfsh-modal .tfsh-head .oo-ui-processDialog-actions-safe {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+}
+
+.tfsh-modal .tfsh-head .oo-ui-processDialog-actions-safe .oo-ui-actionWidget {
+  margin: 0;
+}
+
+.tfsh-modal .tfsh-head .oo-ui-processDialog-actions-safe .oo-ui-actionWidget > .tfsh-close {
+  box-sizing: border-box;
+  width: 32px;
+  height: 26px;
+  min-width: 32px;
+  min-height: 26px;
+  margin: 0;
+  padding: 4px 8px;
+  border: 1px solid #a2a9b1;
+  border-radius: 2px;
+  background-color: #f8f9fa;
+  background-image: linear-gradient( to bottom, #fff, #f8f9fa 55%, #eaecf0 );
+}
+
+.tfsh-modal .tfsh-head .oo-ui-processDialog-actions-safe .oo-ui-actionWidget > .tfsh-close:hover {
+  border-color: #72777d;
+  background-color: #fff;
+  background-image: linear-gradient( to bottom, #fff, #f8f9fa );
+}
+
+.tfsh-modal .tfsh-head .oo-ui-processDialog-actions-safe .oo-ui-actionWidget > .tfsh-close:active {
+  border-color: #72777d;
+  background-color: #c8ccd1;
+  background-image: none;
+}
+
+.tfsh-modal .tfsh-head .tfsh-close .oo-ui-iconElement-icon {
+  position: static;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  margin: 0;
+}
+
+/* Match the MonoBook note footer; Vector supplies its own button theme. */
+.tfsh-note-dialog.ui-dialog .ui-dialog-buttonpane {
+  margin: 5.5px 0 0 !important;
+  padding: 3.3px 11px 5.5px 4.4px !important;
+  border-top: 1px solid #aaa;
+  background: #fff;
+}
+
+.tfsh-note-dialog.ui-dialog .ui-dialog-buttonpane .tfsh-note-save {
+  font: 11px/normal 'Verdana', 'Arial', sans-serif;
+  box-shadow: none;
+}
+
+.tfsh-note-dialog.ui-dialog .tfsh-note-save .ui-button-text {
+  font: 11px/1.4 'Verdana', 'Arial', sans-serif;
+}
