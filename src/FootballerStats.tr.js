@@ -3597,7 +3597,8 @@
 			const pair = row && STAT_PAIRS.find( ( keys ) => keys.some(
 				( key ) => row.tfshData.inputs[ key ] === currentInput
 			) );
-			if ( pair && COMPETITION_NOTE_LABELS[ pair[ 0 ] ] ) {
+			if ( pair && COMPETITION_NOTE_LABELS[ pair[ 0 ] ] &&
+				!row.tfshCompetitionNoteButtons[ pair[ 0 ] ].classList.contains( 'tfsh-header-note-locked' ) ) {
 				setCompetitionNoteValue( row, pair[ 0 ], '' );
 				row.tfshCompetitionNotePropagationDone[ pair[ 0 ] ] = true;
 				refreshPreview();
