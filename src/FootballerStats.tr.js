@@ -863,8 +863,7 @@
 
 	function sharedCupHeader( rows, key, fallback ) {
 		const notes = rows.map( ( row ) => cleanValue( row.competitionNotes && row.competitionNotes[ key ] ) );
-		const hasStatistics = rows.some( ( row ) => !pairDisplay( row[ key ], row[ key.replace( /Apps$/, 'Goals' ) ] ).merged );
-		if ( !hasStatistics || !notes.length || !notes[ 0 ] || !notes.every( ( note ) => note === notes[ 0 ] ) ) {
+		if ( !notes.length || !notes[ 0 ] || !notes.every( ( note ) => note === notes[ 0 ] ) ) {
 			return `colspan="2"|${ fallback }`;
 		}
 		const entries = parseCompetitionEntries( notes[ 0 ] );
@@ -3791,7 +3790,7 @@
 	}
 
 	function editCompetitionNote( event, row, key, button ) {
-		if ( button.disabled ) {
+		if ( button.disabled || button.classList.contains( 'tfsh-header-note-locked' ) ) {
 			return;
 		}
 		if ( event ) {
@@ -3896,6 +3895,10 @@
 			return;
 		}
 		const { row, key } = activeNoteEditor;
+		if ( !activeNoteEditor.headerNote &&
+			row.tfshCompetitionNoteButtons[ key ].classList.contains( 'tfsh-header-note-locked' ) ) {
+			return;
+		}
 		const entries = readCompetitionEntries();
 		const note = JSON.stringify( entries ) === activeNoteEditor.originalEntries ?
 			activeNoteEditor.originalNote : formatCompetitionEntries( entries );
