@@ -3919,13 +3919,13 @@
 		}
 		const teamRows = [ row, ...matchingTeamRows( row ) ];
 		const firstEntry = Boolean( note ) && entries.filter( ( entry ) => cleanValue( entry.name ) ).length === 1 &&
-			!teamRows.some( ( candidate ) => (
-				candidate.tfshCompetitionNotePropagationDone[ key ] ||
-				cleanValue( candidate.tfshCompetitionNotes[ key ] )
-			) );
+			!row.tfshCompetitionNotePropagationDone[ key ] && !cleanValue( row.tfshCompetitionNotes[ key ] );
 		if ( firstEntry ) {
 			const orderedRows = Array.from( tbody.querySelectorAll( 'tr' ) );
-			orderedRows.slice( orderedRows.indexOf( row ) ).filter( ( candidate ) => teamRows.includes( candidate ) )
+			orderedRows.slice( orderedRows.indexOf( row ) ).filter( ( candidate ) => (
+				teamRows.includes( candidate ) && !candidate.tfshCompetitionNotePropagationDone[ key ] &&
+				!cleanValue( candidate.tfshCompetitionNotes[ key ] )
+			) )
 				.forEach( ( candidate ) => {
 					candidate.tfshCompetitionNotePropagationDone[ key ] = true;
 					setCompetitionNoteValue( candidate, key, note );
