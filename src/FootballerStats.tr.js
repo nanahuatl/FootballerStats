@@ -495,6 +495,10 @@
 		);
 	}
 
+	function isLoanOrReserve( row ) {
+		return normalizeBoolean( row.isLoan ) || Boolean( cleanValue( row.reserveAnnotation ) );
+	}
+
 	function formatTeamCell( row, options = {} ) {
 		const team = cleanValue( row.team );
 		let renderedTeam;
@@ -843,7 +847,7 @@
 		}
 
 		rows.forEach( ( row ) => {
-			if ( normalizeBoolean( row.isLoan ) ) {
+			if ( isLoanOrReserve( row ) ) {
 				loanRows.push( row );
 				return;
 			}
@@ -2517,11 +2521,12 @@
 					const periodStart = Number( period.start );
 					const periodEnd = Number( period.end );
 					const sameCalendarYear = /^\d{4}$/.test( cleanValue( row.season ) );
+					const singleInfoboxYear = /^\d{4}$/.test( cleanValue( candidate.infoboxOriginalSeason ) );
 					const withinPeriod = Number.isFinite( rowStart ) &&
 						Number.isFinite( rowEnd ) &&
 						Number.isFinite( periodStart ) &&
 						Number.isFinite( periodEnd ) &&
-						rowStart >= periodStart &&
+						( singleInfoboxYear ? rowEnd >= periodStart : rowStart >= periodStart ) &&
 						( sameCalendarYear ? rowEnd <= periodEnd : rowStart <= periodEnd );
 					if ( matchesIdentity( candidate, row ) && withinPeriod ) {
 						if ( !matchingPeriods.has( candidate.infoboxSourceIndex ) ) {
@@ -2602,7 +2607,9 @@
 			if ( !missingPeriods.has( row.infoboxSourceIndex ) ) {
 				missingPeriods.set( row.infoboxSourceIndex, [] );
 			}
-			missingPeriods.get( row.infoboxSourceIndex ).push( { ...row, infoboxOnly: true } );
+			missingPeriods.get( row.infoboxSourceIndex ).push( {
+				...row, infoboxOnly: !cleanValue( row.reserveAnnotation )
+			} );
 		} );
 		missingPeriods.forEach( ( missingRows, sourceIndex ) => {
 			const nextIndex = enrichedRows.findIndex(
@@ -2833,6 +2840,27 @@
 				const loanToggle = createLinkToggle( 'Kiralık', data.isLoan );
 				stack.appendChild( loanToggle.label );
 				data.isLoan = loanToggle.checkbox;
+				const reserveToggle = createLinkToggle( 'Rezerv', Boolean( cleanValue( initialData.reserveAnnotation ) ), () => {
+					data.clubAnnotation = cleanValue( data.clubAnnotation.replace( /\(\s*(?:rez\.|rezerv)\s*\)/gi, '' ) );
+					data.reserveAnnotation = reserveToggle.checkbox.checked ? '(rezerv)' : '';
+					if ( reserveToggle.checkbox.checked ) {
+						data.clubAnnotation = [ data.clubAnnotation, '(rezerv)' ].filter( Boolean ).join( ' ' );
+						data.isLoan.checked = false;
+					}
+					data.clubPrefix = reserveToggle.checkbox.checked ? '→' : '';
+					refreshPreview();
+				} );
+				data.isReserve = reserveToggle.checkbox;
+				stack.appendChild( reserveToggle.label );
+				loanToggle.checkbox.addEventListener( 'change', () => {
+					if ( loanToggle.checkbox.checked && reserveToggle.checkbox.checked ) {
+						reserveToggle.checkbox.checked = false;
+						data.reserveAnnotation = '';
+						data.clubAnnotation = cleanValue( data.clubAnnotation.replace( /\(\s*(?:rez\.|rezerv)\s*\)/gi, '' ) );
+						data.clubPrefix = '';
+						refreshPreview();
+					}
+				} );
 
 				addTeamLink = document.createElement( 'button' );
 				addTeamLink.type = 'button';
@@ -4564,8 +4592,8 @@
 			let end = hasOpenCustomEnd || ongoingSeasonStart ? '' :
 				( lastCustomYear || seasonSpan.end );
 			if (
-				!lastCustomYear && !hasOpenCustomEnd && !row.isLoan && nextRow &&
-				!nextRow.isLoan && nextRow.seasons.length
+				!lastCustomYear && !hasOpenCustomEnd && !isLoanOrReserve( row ) && nextRow &&
+				!isLoanOrReserve( nextRow ) && nextRow.seasons.length
 			) {
 				const nextSeason = seasonBounds( nextRow.seasons[ 0 ] );
 				if (
@@ -4583,7 +4611,7 @@
 
 		const defaultRange = seasonRangeText( row.seasons, ongoingSeasonStart );
 		if (
-			row.isLoan || !nextRow || nextRow.isLoan ||
+			isLoanOrReserve( row ) || !nextRow || isLoanOrReserve( nextRow ) ||
 			!row.seasons.length || !nextRow.seasons.length
 		) {
 			return defaultRange;
@@ -4666,10 +4694,10 @@
 				previous.infoboxDashGoals = previous.infoboxDashGoals && dashGoals;
 				previous.ongoingSeasonStart = ongoingSeasonStart ||
 					previous.ongoingSeasonStart;
-				if ( isLoan ) {
+				if ( isLoanOrReserve( row ) ) {
 					for ( let i = aggregated.length - 2; i >= 0; i -= 1 ) {
 						const parentEntry = aggregated[ i ];
-						if ( !normalizeBoolean( parentEntry.isLoan ) ) {
+						if ( !isLoanOrReserve( parentEntry ) ) {
 							parentEntry.seasons.push( cleanValue( row.season ) );
 							parentEntry.ongoingSeasonStart = ongoingSeasonStart ||
 								parentEntry.ongoingSeasonStart;
@@ -4688,10 +4716,10 @@
 				return;
 			}
 
-			if ( isLoan ) {
+			if ( isLoanOrReserve( row ) ) {
 				for ( let i = aggregated.length - 1; i >= 0; i -= 1 ) {
 					const entry = aggregated[ i ];
-					if ( !normalizeBoolean( entry.isLoan ) ) {
+					if ( !isLoanOrReserve( entry ) ) {
 						entry.seasons.push( cleanValue( row.season ) );
 						entry.ongoingSeasonStart = ongoingSeasonStart || entry.ongoingSeasonStart;
 						break;
