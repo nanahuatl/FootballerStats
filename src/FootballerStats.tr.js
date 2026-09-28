@@ -3080,11 +3080,7 @@
 				currentInputs.infoboxYear.placeholder = 'Giriş';
 				const lastInputs = rows[ i + span - 1 ].tfshData.inputs;
 				lastInputs.infoboxYear.placeholder = 'Çıkış';
-				current.tfshData.cells.team.rowSpan = span;
-				current.tfshData.cells.teamLink.rowSpan = span;
 				for ( let j = i + 1; j < i + span; j += 1 ) {
-					rows[ j ].tfshData.cells.team.style.display = 'none';
-					rows[ j ].tfshData.cells.teamLink.style.display = 'none';
 					if ( rows[ j - 1 ].tfshData.addSeasonLink ) {
 						rows[ j - 1 ].tfshData.addSeasonLink.style.display = 'none';
 					}
@@ -3093,6 +3089,19 @@
 					const middleInput = rows[ j ].tfshData.inputs.infoboxYear;
 					middleInput.style.visibility = 'hidden';
 					middleInput.disabled = true;
+				}
+				// Expose every season's checkbox as soon as any season is excluded.
+				// Infobox years still belong to the original, uninterrupted spell.
+				const hasInfoboxOnly = rows.slice( i, i + span ).some(
+					( row ) => row.tfshData.inputs.infoboxOnly.checked
+				);
+				if ( !hasInfoboxOnly ) {
+					for ( const field of [ 'team', 'teamLink' ] ) {
+						current.tfshData.cells[ field ].rowSpan = span;
+						for ( let j = i + 1; j < i + span; j += 1 ) {
+							rows[ j ].tfshData.cells[ field ].style.display = 'none';
+						}
+					}
 				}
 				i += span - 1;
 			}
