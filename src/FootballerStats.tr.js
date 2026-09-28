@@ -862,6 +862,9 @@
 	}
 
 	function sharedCupHeader( rows, key, fallback ) {
+		if ( rows.some( ( row ) => row.separateCupNotes && row.separateCupNotes[ key ] ) ) {
+			return `colspan="2"|${ fallback }`;
+		}
 		const notes = rows.map( ( row ) => cleanValue( row.competitionNotes && row.competitionNotes[ key ] ) );
 		if ( !notes.length || !notes[ 0 ] || !notes.every( ( note ) => note === notes[ 0 ] ) ) {
 			return `colspan="2"|${ fallback }`;
@@ -1759,6 +1762,12 @@
 			} );
 		}
 		rows.forEach( ( row ) => {
+			row.separateCupNotes = {};
+			[ 'cupApps', 'leagueCupApps' ].forEach( ( key ) => {
+				if ( !cupHeaderNotes[ key ] && row.competitionNotes[ key ] ) {
+					row.separateCupNotes[ key ] = true;
+				}
+			} );
 			Object.keys( cupHeaderNotes ).forEach( ( key ) => {
 				row.competitionNotes[ key ] = row.competitionNotes[ key ] || cupHeaderNotes[ key ];
 			} );
@@ -2670,6 +2679,7 @@
 
 	let nextClubSpellId = 0;
 	const usedClubSpellIds = new Set();
+	let activeCupHeaderNotes = {};
 
 	function createRow( initialData = {} ) {
 		const tr = document.createElement( 'tr' );
@@ -2691,7 +2701,8 @@
 		usedClubSpellIds.add( tr.tfshClubSpellId );
 		tr.tfshInfoboxStatRefs = initialData.infoboxStatRefs || {};
 		tr.tfshTableCellRefs = { ...initialData.tableCellRefs };
-		tr.tfshCompetitionNotes = { ... initialData.competitionNotes };
+		tr.tfshCompetitionNotes = { ...initialData.competitionNotes, ...activeCupHeaderNotes };
+		tr.tfshSeparateCupNotes = { ...initialData.separateCupNotes };
 		tr.tfshCompetitionNoteButtons = {};
 		tr.tfshCompetitionNotePropagationDone = { ... initialData.competitionNotePropagationDone };
 		Object.keys( tr.tfshCompetitionNotes ).forEach( ( key ) => {
@@ -3512,6 +3523,7 @@
 				row.tableCellRefs = { ...tr.tfshTableCellRefs };
 				updateCompetitionNoteValidity( tr );
 				row.competitionNotes = { ...tr.tfshCompetitionNotes };
+				row.separateCupNotes = { ...tr.tfshSeparateCupNotes };
 				row.competitionNotePropagationDone = { ...tr.tfshCompetitionNotePropagationDone };
 				row.infoboxRefs = tr.tfshInfoboxRefs || {};
 				row.isGuest = tr.tfshIsGuest;
@@ -3851,6 +3863,11 @@
 			label.textContent = COMPETITION_NOTE_LABELS[ key ];
 			const button = backdrop.querySelector( `[data-tfsh-header-note="${ key }"]` );
 			const shared = header.includes( 'data-tfsh-competition' );
+			if ( shared ) {
+				activeCupHeaderNotes[ key ] = extractCellContent( header );
+			} else {
+				delete activeCupHeaderNotes[ key ];
+			}
 			button.classList.toggle( 'has-note', shared );
 			Array.from( tbody.querySelectorAll( 'tr' ) ).forEach( ( row ) => {
 				const noteButton = row.tfshCompetitionNoteButtons[ key ];
@@ -3909,8 +3926,16 @@
 				input.reportValidity();
 				return;
 			}
+			if ( note ) {
+				activeCupHeaderNotes[ key ] = note;
+			} else {
+				delete activeCupHeaderNotes[ key ];
+			}
 			Array.from( tbody.querySelectorAll( 'tr' ) ).forEach( ( candidate ) => {
-				setCompetitionNoteValue( candidate, key, note );
+				candidate.tfshSeparateCupNotes = { ...candidate.tfshSeparateCupNotes, [ key ]: !note };
+				if ( note ) {
+					setCompetitionNoteValue( candidate, key, note );
+				}
 				candidate.tfshCompetitionNotePropagationDone[ key ] = true;
 			} );
 			closeCompetitionNoteDialog();
@@ -3938,6 +3963,7 @@
 	}
 
 	function clearUiRows() {
+		activeCupHeaderNotes = {};
 		tbody.innerHTML = '';
 	}
 
