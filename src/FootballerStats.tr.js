@@ -2811,15 +2811,6 @@
 				input.addEventListener( 'input', () => propagateTeamLinkValue( tr ) );
 				input.addEventListener( 'change', () => propagateTeamLinkValue( tr ) );
 			}
-			if ( key === 'infoboxOnly' ) {
-				input.addEventListener( 'change', () => {
-					if ( input.checked ) {
-						data.leagueApps.value = '0';
-						data.leagueGoals.value = '0';
-						updateGoalInputState( data.leagueApps, data.leagueGoals, false );
-					}
-				} );
-			}
 			if ( !STAT_PAIRS.some( ( pair ) => pair.includes( key ) ) ) {
 				input.addEventListener( 'input', refreshPreview );
 				input.addEventListener( 'change', refreshPreview );
