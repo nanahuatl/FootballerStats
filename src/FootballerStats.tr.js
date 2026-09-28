@@ -4384,7 +4384,9 @@
 		const existingHeading = /^==[ \t]*(?:Kariyer|Futbolculuk) istatistikleri[ \t]*==[ \t]*\r?$/im.exec( source );
 		if ( existingHeading ) {
 			const bodyStart = existingHeading.index + existingHeading[ 0 ].length;
-			return source.slice( 0, bodyStart ) + '\n' + body + '\n' + source.slice( bodyStart );
+			const clubHeading = nationalTeamCareerEnabled ? '=== Kulüp ===\n' : '';
+			const remaining = source.slice( bodyStart ).replace( /^\s*===\s*Kulüp\s*===[ \t]*(?:\r?\n|$)/i, '\n' );
+			return source.slice( 0, bodyStart ) + '\n' + clubHeading + body + '\n' + remaining;
 		}
 		const cleanSource = source;
 
