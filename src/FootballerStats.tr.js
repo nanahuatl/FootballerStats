@@ -3010,6 +3010,21 @@
 		const next = rows[ index + 1 ];
 		const key = teamGroupKey( tr.tfshData.inputs );
 		const exit = cleanValue( tr.tfshData.inputs.infoboxYear.value );
+		if ( exit && next && teamGroupKey( next.tfshData.inputs ) === key &&
+			( !previous || teamGroupKey( previous.tfshData.inputs ) !== key ) ) {
+			const input = next.tfshData.inputs.infoboxYear;
+			const entry = seasonBounds( exit ).start;
+			const afterNext = rows[ index + 2 ];
+			if ( !afterNext || teamGroupKey( afterNext.tfshData.inputs ) !== key ) {
+				const endValue = cleanValue( input.value ) || next.tfshData.inputs.season.value;
+				const end = /[-–—−]\s*$/.test( endValue ) ? '-' : seasonBounds( endValue ).end;
+				input.value = !end || entry === end ? entry : entry + ( end === '-' ? '-' : '-' + end );
+			} else {
+				input.value = entry;
+			}
+			next.tfshInfoboxYearEdited = next.tfshInfoboxYearEdited || tr.tfshInfoboxYearEdited;
+			next.tfshInfoboxYearPending = false;
+		}
 		if ( exit && previous && teamGroupKey( previous.tfshData.inputs ) === key &&
 			( !next || teamGroupKey( next.tfshData.inputs ) !== key ) ) {
 			const input = previous.tfshData.inputs.infoboxYear;
