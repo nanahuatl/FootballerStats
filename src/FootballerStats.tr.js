@@ -4648,6 +4648,23 @@
 	}
 
 	function aggregateInfoboxRows( rows ) {
+		// Insert new spells chronologically without disturbing existing loan/reserve periods.
+		const groups = groupRowsByTeam( rows );
+		const isExisting = ( group ) => group.rows.some( ( row ) => (
+			row.infoboxSourceIndex !== undefined && row.infoboxSourceIndex !== null
+		) );
+		const startYear = ( group ) => Number( seasonBounds(
+			group.rows[ 0 ].infoboxOriginalSeason ||
+			sortRowsForCareerTable( group.rows )[ 0 ].season
+		).start );
+		const orderedGroups = groups.filter( isExisting );
+		groups.filter( ( group ) => !isExisting( group ) ).forEach( ( group ) => {
+			const index = orderedGroups.findIndex( ( existing ) => (
+				startYear( existing ) > startYear( group )
+			) );
+			orderedGroups.splice( index < 0 ? orderedGroups.length : index, 0, group );
+		} );
+		rows = orderedGroups.flatMap( ( group ) => group.rows );
 		const aggregated = [];
 		let lastCareerRowIndex = -1;
 		for ( let i = rows.length - 1; i >= 0; i -= 1 ) {
