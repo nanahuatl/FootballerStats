@@ -834,37 +834,6 @@
 		};
 	}
 
-	function orderCareerTableLoans( rows ) {
-		const result = [];
-		let parentKey = null;
-		let parentRows = [];
-		let loanRows = [];
-
-		function flush() {
-			result.push( ...parentRows, ...loanRows );
-			parentRows = [];
-			loanRows = [];
-		}
-
-		rows.forEach( ( row ) => {
-			if ( isLoanOrReserve( row ) ) {
-				loanRows.push( row );
-				return;
-			}
-
-			const key = JSON.stringify( [ rowTeamIdentityKey( row ),
-				row.clubSpellId ?? row.infoboxSourceIndex ] );
-			if ( key !== parentKey ) {
-				flush();
-				parentKey = key;
-			}
-			parentRows.push( row );
-		} );
-
-		flush();
-		return result;
-	}
-
 	function sharedCupHeader( rows, key, fallback ) {
 		if ( rows.some( ( row ) => row.separateCupNotes && row.separateCupNotes[ key ] ) ) {
 			return `colspan="2"|${ fallback }`;
@@ -954,8 +923,7 @@
 	function buildTableWikitext( rows ) {
 		const noteNames = new Map();
 		const tableRows = rows.filter( ( row ) => !normalizeBoolean( row.infoboxOnly ) );
-		const sortedRows = sortRowsForCareerTable( mergeCompetitionNotes( tableRows ) );
-		const groups = groupRowsByTeam( orderCareerTableLoans( sortedRows ) );
+		const groups = groupRowsByTeam( mergeCompetitionNotes( tableRows ) );
 		const topHeaders = [
 			'rowspan="2"|Takım',
 			'rowspan="2"|Sezon',
@@ -2868,7 +2836,7 @@
 				addTeamLink.textContent = '+';
 				addTeamLink.setAttribute( 'aria-label', 'Takım ekle' );
 				addTeamLink.title = 'Takım ekle';
-				addTeamLink.addEventListener( 'click', addTeamRow );
+				addTeamLink.addEventListener( 'click', () => addTeamRow( tr ) );
 				stack.appendChild( addTeamLink );
 
 				td.appendChild( stack );
@@ -3145,7 +3113,6 @@
 			const row = rows[ i ];
 			if ( row.tfshData && row.tfshData.cells && row.tfshData.cells.team.style.display !== 'none' && row.tfshData.addTeamLink ) {
 				row.tfshData.addTeamLink.style.display = '';
-				break;
 			}
 		}
 	}
@@ -3349,8 +3316,21 @@
 		return rows.length ? rows[ rows.length - 1 ] : null;
 	}
 
-	function addTeamRow() {
+	function addTeamRow( afterTr = null ) {
+		let following = null;
+		if ( afterTr ) {
+			const rows = Array.from( tbody.querySelectorAll( 'tr' ) );
+			const key = teamGroupKey( afterTr.tfshData.inputs );
+			let index = rows.indexOf( afterTr ) + 1;
+			while ( index < rows.length && teamGroupKey( rows[ index ].tfshData.inputs ) === key ) {
+				index += 1;
+			}
+			following = rows[ index ] || null;
+		}
 		createRow();
+		if ( following ) {
+			tbody.insertBefore( tbody.lastElementChild, following );
+		}
 		refreshPreview();
 	}
 
