@@ -3562,7 +3562,7 @@
 		Array.from( tbody.querySelectorAll( 'tr' ) ).forEach( ( row ) => {
 			const { inputs, cells } = row.tfshData;
 			const infoboxOnly = inputs.infoboxOnly.checked;
-			const keys = FIELD_KEYS.slice( FIELD_KEYS.indexOf( 'seasonLink' ) );
+			const keys = [ 'season', ...FIELD_KEYS.slice( FIELD_KEYS.indexOf( 'seasonLink' ) ) ];
 			keys.forEach( ( key ) => {
 				if ( !cells[ key ] ) {
 					return;
