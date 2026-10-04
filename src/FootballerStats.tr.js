@@ -3655,10 +3655,11 @@
 
 	function initializeStickyTableHeader() {
 		const modal = backdrop.querySelector( '.tfsh-modal' );
+		const titleBar = modal.querySelector( '.tfsh-head' );
 		const table = backdrop.querySelector( '.tfsh-table' );
 		const header = table.querySelector( 'thead' );
 		const update = () => {
-			const top = modal.getBoundingClientRect().top + modal.clientTop;
+			const top = modal.getBoundingClientRect().top + modal.clientTop + titleBar.getBoundingClientRect().height;
 			const bounds = table.getBoundingClientRect();
 			const offset = Math.max( 0, Math.min( top - bounds.top, table.offsetHeight - header.offsetHeight ) );
 			header.style.transform = `translateY(${ offset }px)`;
@@ -3669,6 +3670,7 @@
 			const observer = new ResizeObserver( update );
 			observer.observe( table );
 			observer.observe( modal );
+			observer.observe( titleBar );
 		}
 		update();
 	}
