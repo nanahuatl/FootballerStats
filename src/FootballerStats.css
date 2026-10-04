@@ -886,6 +886,9 @@
 
 /* Use Adiutor's native OOUI ProcessDialog header and action styling. */
 .tfsh-head {
+  position: sticky;
+  top: calc( -1 * var( --tfsh-modal-padding ) );
+  z-index: 4;
   margin: calc( -1 * var( --tfsh-modal-padding ) ) calc( -1 * var( --tfsh-modal-padding ) ) 12px;
   background: var( --background-color-base, #fff );
   font: 14px/1.42857143 sans-serif;
