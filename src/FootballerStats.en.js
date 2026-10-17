@@ -94,6 +94,103 @@
 	let visualEditorButton;
 	const boundVisualTargets = new WeakSet();
 
+	let unloadBaseline = null;
+	let unloadGuardActive = false;
+	let unloadChangeVersion = 0;
+
+	function getUnloadSnapshot() {
+		return JSON.stringify( {
+			rows: Array.from( tbody.querySelectorAll( 'tr' ) ).map( ( row ) => ( {
+				fields: Array.from( row.querySelectorAll( 'input, select, textarea' ) )
+					.map( ( input ) => [ input.value, Boolean( input.checked ) ] ),
+				notes: row.tfshCompetitionNotes,
+				separateNotes: row.tfshSeparateCupNotes
+			} ) ),
+			columns: [ leagueCupEnabled, localLeagueEnabled, nationalCupEnabled,
+				continentalEnabled, otherEnabled ],
+			otherNote,
+			date: updateDateInput && updateDateInput.value,
+			today: updateDateTodayInput && updateDateTodayInput.checked
+		} );
+	}
+
+	function hasPendingNoteChanges() {
+		return Boolean( activeNoteEditor && activeNoteEditor.originalEntries !== undefined &&
+			JSON.stringify( readCompetitionEntries() ) !== activeNoteEditor.originalEntries );
+	}
+
+	function handleUnsavedBeforeUnload( event ) {
+		updateUnloadGuard();
+		if ( !unloadGuardActive ) {
+			return;
+		}
+		event.preventDefault();
+		event.returnValue = true;
+	}
+
+	function setUnloadGuard( enabled ) {
+		if ( enabled === unloadGuardActive ) {
+			return;
+		}
+		unloadGuardActive = enabled;
+		if ( enabled ) {
+			window.addEventListener( 'beforeunload', handleUnsavedBeforeUnload );
+		} else {
+			window.removeEventListener( 'beforeunload', handleUnsavedBeforeUnload );
+		}
+	}
+
+	function resetUnloadBaseline() {
+		if ( !tbody ) {
+			return;
+		}
+		unloadBaseline = getUnloadSnapshot();
+		setUnloadGuard( false );
+	}
+
+	function updateUnloadGuard() {
+		if ( !tbody || unloadBaseline === null ) {
+			return;
+		}
+		const dirty = getUnloadSnapshot() !== unloadBaseline || hasPendingNoteChanges();
+		if ( dirty ) {
+			unloadChangeVersion += 1;
+		}
+		setUnloadGuard( dirty );
+	}
+
+	function initializeUnloadProtection() {
+		// Capture the state before an interaction if initial loading is still pending.
+		[ 'pointerdown', 'keydown', 'focusin' ].forEach( ( name ) => {
+			backdrop.addEventListener( name, () => {
+				if ( unloadBaseline === null ) {
+					resetUnloadBaseline();
+				}
+			}, true );
+		} );
+		[ 'input', 'change', 'click', 'keyup' ].forEach( ( name ) => {
+			backdrop.addEventListener( name, updateUnloadGuard );
+		} );
+	}
+
+	async function loadSavedRows( sourceOverride ) {
+		const changeVersion = unloadChangeVersion;
+		await loadRowsForEditor( sourceOverride );
+		// An asynchronous redirect lookup must not clear edits made while it ran.
+		if ( unloadChangeVersion === changeVersion ) {
+			resetUnloadBaseline();
+		}
+	}
+
+	function finishUnloadHandoff( appliedSnapshot ) {
+		// Keep protecting any edits made during the asynchronous apply operation.
+		if ( getUnloadSnapshot() === appliedSnapshot && !hasPendingNoteChanges() ) {
+			resetUnloadBaseline();
+		} else {
+			updateUnloadGuard();
+		}
+	}
+
 	function getVisualEditorSurface() {
 		const target = window.ve && window.ve.init && window.ve.init.target;
 		const surface = target && target.active && target.getSurface();
@@ -891,37 +988,6 @@
 		};
 	}
 
-	function orderCareerTableLoans( rows ) {
-		const result = [];
-		let parentKey = null;
-		let parentRows = [];
-		let loanRows = [];
-
-		function flush() {
-			result.push( ...parentRows, ...loanRows );
-			parentRows = [];
-			loanRows = [];
-		}
-
-		rows.forEach( ( row ) => {
-			if ( normalizeBoolean( row.isLoan ) ) {
-				loanRows.push( row );
-				return;
-			}
-
-			const key = JSON.stringify( [ rowTeamIdentityKey( row ),
-				row.clubSpellId ?? row.infoboxSourceIndex ] );
-			if ( key !== parentKey ) {
-				flush();
-				parentKey = key;
-			}
-			parentRows.push( row );
-		} );
-
-		flush();
-		return result;
-	}
-
 	function mergeCompetitionNotes( rows ) {
 		const groups = new Map();
 		const result = rows.map( ( row ) => ( { ...row, competitionNotes: { ...row.competitionNotes } } ) );
@@ -994,8 +1060,7 @@
 	function buildTableWikitext( rows ) {
 		const noteNames = new Map();
 		const tableRows = rows.filter( ( row ) => !normalizeBoolean( row.infoboxOnly ) );
-		const sortedRows = sortRowsForCareerTable( mergeCompetitionNotes( tableRows ) );
-		const groups = groupRowsByTeam( orderCareerTableLoans( sortedRows ) );
+		const groups = groupRowsByTeam( mergeCompetitionNotes( tableRows ) );
 		const topHeaders = [
 			'rowspan="2"|Club',
 			'rowspan="2"|Season',
@@ -2977,7 +3042,7 @@
 				addTeamLink.textContent = '+';
 				addTeamLink.setAttribute( 'aria-label', 'Add club' );
 				addTeamLink.title = 'Add club';
-				addTeamLink.addEventListener( 'click', addTeamRow );
+				addTeamLink.addEventListener( 'click', () => addTeamRow( tr ) );
 				stack.appendChild( addTeamLink );
 
 				td.appendChild( stack );
@@ -3239,7 +3304,6 @@
 			const row = rows[ i ];
 			if ( row.tfshData && row.tfshData.cells && row.tfshData.cells.team.style.display !== 'none' && row.tfshData.addTeamLink ) {
 				row.tfshData.addTeamLink.style.display = '';
-				break;
 			}
 		}
 	}
@@ -3443,8 +3507,21 @@
 		return rows.length ? rows[ rows.length - 1 ] : null;
 	}
 
-	function addTeamRow() {
+	function addTeamRow( afterTr = null ) {
+		let following = null;
+		if ( afterTr ) {
+			const rows = Array.from( tbody.querySelectorAll( 'tr' ) );
+			const key = teamGroupKey( afterTr.tfshData.inputs );
+			let index = rows.indexOf( afterTr ) + 1;
+			while ( index < rows.length && teamGroupKey( rows[ index ].tfshData.inputs ) === key ) {
+				index += 1;
+			}
+			following = rows[ index ] || null;
+		}
 		createRow();
+		if ( following ) {
+			tbody.insertBefore( tbody.lastElementChild, following );
+		}
 		refreshPreview();
 	}
 
@@ -3675,7 +3752,7 @@
 		Array.from( tbody.querySelectorAll( 'tr' ) ).forEach( ( row ) => {
 			const { inputs, cells } = row.tfshData;
 			const infoboxOnly = inputs.infoboxOnly.checked;
-			const keys = FIELD_KEYS.slice( FIELD_KEYS.indexOf( 'seasonLink' ) );
+			const keys = [ 'season', ...FIELD_KEYS.slice( FIELD_KEYS.indexOf( 'seasonLink' ) ) ];
 			keys.forEach( ( key ) => {
 				if ( !cells[ key ] ) {
 					return;
@@ -3767,10 +3844,11 @@
 
 	function initializeStickyTableHeader() {
 		const modal = backdrop.querySelector( '.tfsh-modal' );
+		const titleBar = modal.querySelector( '.tfsh-head' );
 		const table = backdrop.querySelector( '.tfsh-table' );
 		const header = table.querySelector( 'thead' );
 		const update = () => {
-			const top = modal.getBoundingClientRect().top + modal.clientTop;
+			const top = modal.getBoundingClientRect().top + modal.clientTop + titleBar.getBoundingClientRect().height;
 			const bounds = table.getBoundingClientRect();
 			const offset = Math.max( 0, Math.min( top - bounds.top, table.offsetHeight - header.offsetHeight ) );
 			header.style.transform = `translateY(${ offset }px)`;
@@ -3781,6 +3859,7 @@
 			const observer = new ResizeObserver( update );
 			observer.observe( table );
 			observer.observe( modal );
+			observer.observe( titleBar );
 		}
 		update();
 	}
@@ -4013,7 +4092,7 @@
 		tbody.innerHTML = '';
 	}
 
-	async function loadSavedRows( sourceOverride ) {
+	async function loadRowsForEditor( sourceOverride ) {
 		// Open each article with the default column visibility.
 		resetDefaultOptionalCompetitionColumns();
 
@@ -4695,6 +4774,23 @@
 	}
 
 	function aggregateInfoboxRows( rows ) {
+		// Insert new spells chronologically without disturbing existing loan/reserve periods.
+		const groups = groupRowsByTeam( rows );
+		const isExisting = ( group ) => group.rows.some( ( row ) => (
+			row.infoboxSourceIndex !== undefined && row.infoboxSourceIndex !== null
+		) );
+		const startYear = ( group ) => Number( seasonBounds(
+			group.rows[ 0 ].infoboxOriginalSeason ||
+			sortRowsForCareerTable( group.rows )[ 0 ].season
+		).start );
+		const orderedGroups = groups.filter( isExisting );
+		groups.filter( ( group ) => !isExisting( group ) ).forEach( ( group ) => {
+			const index = orderedGroups.findIndex( ( existing ) => (
+				startYear( existing ) > startYear( group )
+			) );
+			orderedGroups.splice( index < 0 ? orderedGroups.length : index, 0, group );
+		} );
+		rows = orderedGroups.flatMap( ( group ) => group.rows );
 		const aggregated = [];
 		let lastCareerRowIndex = -1;
 		for ( let i = rows.length - 1; i >= 0; i -= 1 ) {
@@ -5226,6 +5322,7 @@
 			return;
 		}
 		visualEditorApplying = true;
+		const appliedSnapshot = getUnloadSnapshot();
 		const applyButton = backdrop.querySelector( '.tfsh-apply' );
 		applyButton.disabled = true;
 		try {
@@ -5266,6 +5363,7 @@
 			}
 			model.breakpoint();
 			visualEditorSession = null;
+			finishUnloadHandoff( appliedSnapshot );
 			backdrop.classList.remove( 'is-open' );
 			session.surface.getView().focus();
 			mw.notify(
@@ -5282,6 +5380,7 @@
 
 	async function applyToTextarea() {
 		const rows = getRowsFromUI();
+		const appliedSnapshot = getUnloadSnapshot();
 		if ( !rows.length ) {
 			return;
 		}
@@ -5305,6 +5404,8 @@
 			const nextText = buildUpdatedArticle( resolvedSource, resolvedRows );
 			setEditorText( nextText );
 			refreshPreview();
+			// The source editor now owns the changes and its normal save/preview warning.
+			finishUnloadHandoff( appliedSnapshot );
 			backdrop.classList.remove( 'is-open' );
 
 			const summaryInput = document.querySelector( "#wpSummary, input[name='wpSummary']" );
@@ -5553,6 +5654,7 @@
 		tbody = backdrop.querySelector( 'tbody' );
 		updateDateInput = backdrop.querySelector( '.tfsh-update-date' );
 		updateDateTodayInput = backdrop.querySelector( '.tfsh-update-date-today' );
+		initializeUnloadProtection();
 		tbody.addEventListener( 'keydown', handleTableKeyboardNavigation );
 		initializeStickyTableHeader();
 		updateDateInput.addEventListener( 'input', () => {
